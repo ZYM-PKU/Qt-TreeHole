@@ -80,6 +80,7 @@ struct Comment {
     int userID;
     Datetime timestamp;
     char text[MAXLEN];    // text
+    Comment(){}
     Comment(int i, int u, Datetime t, const char* textbuf):index(i),userID(u),timestamp(t){
         strncpy(text, textbuf, sizeof(char)*strlen(textbuf));
     }
