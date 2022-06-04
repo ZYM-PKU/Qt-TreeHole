@@ -10,16 +10,33 @@
 #-------------------------------------------------*/
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include <QTextCodec>
 #include <QDateTime>
 #include <QDebug>
+#include <bits/stdc++.h>
+using namespace std;
+
+#include "client.h"
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
     resize(1200, 900);
+
+    //初始化套接字对象
+    TSocket = new QTcpSocket(this);
+    //链接服务器
+    TSocket->connectToHost(QHostAddress("162.105.101.249"), 9999);
+    if(!TSocket->waitForConnected(30000))
+    {
+         qDebug() << "Connection failed";
+         return;
+     }
+     qDebug() << "Connect successfully";
+
 }
 
 MainWindow::~MainWindow()
@@ -31,46 +48,60 @@ void MainWindow::on_pushButton_clicked()
 {
     QString msg = ui->textEdit->toPlainText();
     ui->textEdit->setText("");
-    QString time = QString::number(QDateTime::currentDateTime().toTime_t()); //时间戳
+    const char* textbuf = msg.toStdString().c_str();
 
-    bool isSending = true; // 发送中
+    RequestHeader header(SEND, 0, TEXTITEM);
+    header.textlen = sizeof(char)*strlen(textbuf);
 
-    qDebug()<<"addMessage" << msg << time << ui->listWidget->count();
-    if(ui->listWidget->count()%2) {
-        if(isSending) {
-            dealMessageTime(time);
+    QByteArray barray;
+    barray.append(reinterpret_cast<char*>(&header), sizeof(header));
 
-            QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
-            QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
-            dealMessage(messageW, item, msg, time, QNChatMessage::User_Me);
-        } else {
-            bool isOver = true;
-            for(int i = ui->listWidget->count() - 1; i > 0; i--) {
-                QNChatMessage* messageW = (QNChatMessage*)ui->listWidget->itemWidget(ui->listWidget->item(i));
-                if(messageW->text() == msg) {
-                    isOver = false;
-                    messageW->setTextSuccess();
-                }
-            }
-            if(isOver) {
-                dealMessageTime(time);
+    TSocket->write(barray);
+    TSocket->flush();
 
-                QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
-                QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
-                dealMessage(messageW, item, msg, time, QNChatMessage::User_Me);
-                messageW->setTextSuccess();
-            }
-        }
-    } else {
-        if(msg != "") {
-            dealMessageTime(time);
+    TSocket->write(textbuf);
+    TSocket->flush();
 
-            QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
-            QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
-            dealMessage(messageW, item, msg, time, QNChatMessage::User_She);
-        }
-    }
-    ui->listWidget->setCurrentRow(ui->listWidget->count()-1);
+
+
+//    bool isSending = true; // 发送中
+
+//    qDebug()<<"addMessage" << msg << time << ui->listWidget->count();
+//    if(ui->listWidget->count()%2) {
+//        if(isSending) {
+//            dealMessageTime(time);
+
+//            QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
+//            QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
+//            dealMessage(messageW, item, msg, time, QNChatMessage::User_Me);
+//        } else {
+//            bool isOver = true;
+//            for(int i = ui->listWidget->count() - 1; i > 0; i--) {
+//                QNChatMessage* messageW = (QNChatMessage*)ui->listWidget->itemWidget(ui->listWidget->item(i));
+//                if(messageW->text() == msg) {
+//                    isOver = false;
+//                    messageW->setTextSuccess();
+//                }
+//            }
+//            if(isOver) {
+//                dealMessageTime(time);
+
+//                QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
+//                QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
+//                dealMessage(messageW, item, msg, time, QNChatMessage::User_Me);
+//                messageW->setTextSuccess();
+//            }
+//        }
+//    } else {
+//        if(msg != "") {
+//            dealMessageTime(time);
+
+//            QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
+//            QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
+//            dealMessage(messageW, item, msg, time, QNChatMessage::User_She);
+//        }
+//    }
+//    ui->listWidget->setCurrentRow(ui->listWidget->count()-1);
 }
 
 void MainWindow::dealMessage(QNChatMessage *messageW, QListWidgetItem *item, QString text, QString time,  QNChatMessage::User_Type type)

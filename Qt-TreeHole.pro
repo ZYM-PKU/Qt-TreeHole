@@ -1,4 +1,5 @@
 QT       += core gui
+QT += network
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -17,11 +18,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     chatmessage/qnchatmessage.cpp \
+    client.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     chatmessage/qnchatmessage.h \
+    client.h \
     mainwindow.h
 
 FORMS += \

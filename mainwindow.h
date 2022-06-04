@@ -13,6 +13,12 @@
 
 #include <QMainWindow>
 #include <QListWidgetItem>
+#include <QTcpSocket>
+#include <QUdpSocket>
+#include <QHostAddress>
+#include <QDebug>
+#include <QTimer>
+#include <QString>
 #include "chatmessage/qnchatmessage.h"
 
 namespace Ui {
@@ -27,8 +33,15 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    // UDP通信
+    QUdpSocket *USocket;
+    // TCP通信
+    QTcpSocket *TSocket;
+
     void dealMessage(QNChatMessage *messageW, QListWidgetItem *item, QString text, QString time, QNChatMessage::User_Type type);
     void dealMessageTime(QString curMsgTime);
+
+
 private slots:
     void on_pushButton_clicked();
 
