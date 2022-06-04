@@ -1,9 +1,8 @@
-#ifndef CLIENT_H
-#define CLIENT_H
-
-
+#ifndef SERVER_H
+#include <pthread.h>
 #include <bits/stdc++.h>
 
+#define SERVER_H
 
 #define MAXLEN 256
 #define MAXSIZE 2048
@@ -11,17 +10,20 @@
 
 #define MAXCOM 100
 
-
 //Htype
 #define GET 0         // get items
 #define SEND 1        // send item
-#define RESPOND 2     // respond
+
+#define SEQRESPOND 0     // sequence respond
 
 
 #define DEFAULTITEM 0     // default item
 #define TEXTITEM 1        // text item
 #define MULTIITEM 2       // mutlimedia item
 
+#define INIT pthread_mutex_init
+#define P pthread_mutex_lock
+#define V pthread_mutex_unlock
 
 #define Datetime struct tm
 
@@ -29,15 +31,14 @@
 Datetime gettime(){
 
     time_t t;
-    Datetime* tmp;
+    Datetime* tmp; 
 
-    time(&t);
+	time(&t);
     tmp = localtime(&t);
-
+	
     return *tmp;
 
 }
-
 
 struct RequestHeader {
 
@@ -73,18 +74,20 @@ struct RespondHeader {
 };
 
 
-
 struct Comment {
 
-    int index; //comment index
+    int index;  // comment index
     int userID;
     Datetime timestamp;
     char text[MAXLEN];    // text
+
+    Comment(){}
     Comment(int i, int u, Datetime t, const char* textbuf):index(i),userID(u),timestamp(t){
         strncpy(text, textbuf, sizeof(char)*strlen(textbuf));
     }
 
 };
+
 
 class Item {
 public:
@@ -126,8 +129,6 @@ public:
     }
 };
 
-
-
 class MuiltItem : public Item{
 public:
     char text[MAXLEN];    // text
@@ -147,4 +148,131 @@ public:
 
 
 
-#endif // CLIENT_H
+class ItemList{
+
+    pthread_mutex_t rmutex;  
+	pthread_mutex_t wmutex;
+
+    int readcount;
+    int writecount;
+
+    pthread_mutex_t rclock;  // lock on readcount
+	pthread_mutex_t wclock;  // lock on writecount
+
+    pthread_mutex_t stop;  // mutex on writers
+
+    Item* itemlist;
+    int listlen;  
+
+public:
+
+    ItemList(){
+        
+        INIT(&rmutex, NULL);
+        INIT(&wmutex, NULL);
+        INIT(&rclock, NULL);
+        INIT(&wclock, NULL);
+        INIT(&stop, NULL);
+
+        readcount = writecount = 0;
+
+
+        itemlist = new Item(0, 0, gettime());
+        listlen = 0;
+
+    }
+
+    void append(Item* it){
+
+        P(&wclock);
+        writecount++;
+        if(writecount == 1)
+            P(&rmutex);
+        V(&wclock);
+
+        P(&wmutex);
+
+        it->index = ++listlen;
+        it->next = itemlist;
+        itemlist->prev = it;
+        itemlist = it;  // append at the head of list
+
+
+        V(&wmutex);
+
+        P(&wclock);
+        writecount--;
+        if(writecount == 0)
+            V(&rmutex);
+        V(&wclock);
+
+    }
+
+    Item* getitems(int num){
+
+        P(&stop);   
+        P(&rmutex);  // writer first
+        P(&rclock); 
+        readcount++;
+        if(readcount == 1)
+            P(&wmutex);
+        V(&rclock);
+        V(&rmutex);
+        V(&stop);
+
+        Item* temp = itemlist;
+        Item* newlist = NULL;
+        Item* tail = NULL;
+        for(int i=0; i<num; i++){
+
+            if(!temp)break;
+            if(temp->Itype == TEXTITEM){
+
+                TextItem* curr = new TextItem(temp->index, temp->userID, temp->timestamp, temp->gettext());
+                Item* icurr = (Item*)curr;
+                if(i==0){
+                    newlist = icurr;
+                    tail = newlist;
+                }
+                else{
+                    tail->next = icurr;
+                    icurr->prev = tail;
+                    tail = icurr;
+                }
+
+            }
+            else if(temp->Itype == MULTIITEM){
+
+                MuiltItem* curr = new MuiltItem(temp->index, temp->userID, temp->timestamp, temp->gettext(), temp->getmulti());
+                Item* icurr = (Item*)curr;
+                if(i==0){
+                    newlist = icurr;
+                    tail = newlist;
+                }
+                else{
+                    tail->next = icurr;
+                    icurr->prev = tail;
+                    tail = icurr;
+                }
+
+            }
+            temp = temp->next;
+
+        }
+
+
+        P(&rclock);
+        readcount--;
+        if(readcount == 0)
+            V(&wmutex);
+        V(&rclock);
+
+        return newlist;
+
+    }
+
+};
+
+
+
+#endif // SERVER_H
