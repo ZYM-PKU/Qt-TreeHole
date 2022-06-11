@@ -26,7 +26,7 @@
 #define Datetime struct tm
 
 
-Datetime gettime(){
+inline Datetime get_time(){
 
     time_t t;
     Datetime* tmp;
