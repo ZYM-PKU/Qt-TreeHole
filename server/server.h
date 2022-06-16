@@ -1,21 +1,4 @@
 #ifndef SERVER_H
-#include <pthread.h>
-#include <bits/stdc++.h>
-
-#define SERVER_H
-
-#define MAXLEN 256
-#define MAXSIZE 2048
-#define MAXSLEN 128
-
-#define MAXCOM 100
-
-//Htype
-#define GET 0         // get items
-#define SEND 1        // send item
-
-#define SEQRESPOND 0     // sequence respond
-#ifndef SERVER_H
 #define SERVER_H
 
 #include <pthread.h>
@@ -38,8 +21,6 @@ using namespace std;
 #define P pthread_mutex_lock
 #define V pthread_mutex_unlock
 
-//Time
-#define Datetime struct tm
 
 
 namespace THS { //TreeHoleServer
@@ -51,8 +32,22 @@ enum Itype{ DEFAULTITEM = 0, TEXTITEM, MULTIITEM };
 enum Htype{ SIGNUP = 0, LOGIN, GET, UPLOAD, REPLY, SEND };
 
 //Error type
-enum State{ SUCCESS = 0, USER_EXIST, USER_NOT_EXIST, PASSWORD_FAIL };
+enum State{ SUCCESS = 0, USER_EXIST, USER_NOT_EXIST, PASSWORD_FAIL, ILLEGAL_USER, UPLOAD_FAIL };
 
+
+struct Datetime {
+
+    int tm_hour;
+    int tm_isdst;
+    int tm_mday;
+    int tm_min;
+    int tm_mon;
+    int tm_sec;
+    int tm_wday;
+    int yday;
+    int year;
+
+};
 
 struct RequestHeader {
 
@@ -77,6 +72,7 @@ struct RequestHeader {
     RequestHeader(Htype ty, ll uid, const char* pbuf):
         htype(ty),userID(uid)
     {
+        memset(password, 0, sizeof(password));
         strncpy(password, pbuf, strlen(pbuf));
     }
 
@@ -98,19 +94,20 @@ struct RespondHeader {
     // header type
     Htype htype;   
 
-    // msg
-    char msg[MAXMLEN];
+    // state
+    State state;
+
+    // user token
+    ll token;
 
     // content
     int seqlen;   // sequence length
 
-
+    RespondHeader(){}
+    
     // reply
-    RespondHeader(Htype ty, const char* mbuf):
-        htype(ty)
-    {
-        strncpy(msg, mbuf, strlen(mbuf));
-    }
+    RespondHeader(Htype ty, State st, ll tk):
+        htype(ty),state(st),token(tk){}
 
     // send
     RespondHeader(Htype ty, int sl):
@@ -125,14 +122,26 @@ struct DataHeader {
     Itype itype;
     size_t textlen;
     size_t multisize;
+    
+    int index;
+    ll uid;
+    Datetime timestamp;
+    
+    int comcnt;  // comment count
 
     // text data
     DataHeader(Itype ty, int tl):
         itype(ty),textlen(tl){}
 
+    DataHeader(Itype ty, int tl, int i, ll u, Datetime dt, int cc):
+        itype(ty),textlen(tl),index(i),uid(u),timestamp(dt),comcnt(cc){}
+
     // multi data
     DataHeader(Itype ty, int tl, int ms):
         itype(ty),textlen(tl),multisize(ms){}
+
+    DataHeader(Itype ty, int tl, int ms, int i, ll u, Datetime dt, int cc):
+        itype(ty),textlen(tl),multisize(ms),index(i),uid(u),timestamp(dt),comcnt(cc){}
 
 };
 
@@ -168,8 +177,8 @@ struct Comment {
 class Item {
 
     // item type
-    Itype itype; 
-    int index; 
+    Itype itype;
+    int index;
 
     // user info
     ll userID;
@@ -178,8 +187,8 @@ class Item {
     Datetime timestamp;
 
     // comments
-    int subscribe_num;     // num of subscribes
-    int comment_num;       // num of comments
+    int subcnt;       // subscribe count
+    int comcnt;       // comment count
     Comment comments[MAXCOM];     // short comments
 
     // content info
@@ -188,11 +197,13 @@ class Item {
 
 protected:
     // base item 声明保护，防止基类初始化
-    Item(Itype it, int i, int u, Datetime t): 
+    Item(Itype it, int i, int u, Datetime t):
         itype(it),index(i),userID(u),timestamp(t)
     {
-        comment_num = 0;
-        subscribe_num = 0;
+        subcnt = 0;
+        comcnt = 0;
+        textlen = 0;
+        multisize = 0;
     }
 
 public:
@@ -213,12 +224,46 @@ public:
         return index;
     }
 
+    void setindex(int i) {
+        index = i;
+    }
+
     size_t gettextlen() const {
         return textlen;
     }
 
+    void settextlen(size_t l){
+        textlen = l;
+    }
+
+    void setmultisize(size_t s){
+        multisize = s;
+    }
+
     size_t getmultisize() const {
         return multisize;
+    }
+
+    int getsubcnt() const {
+        return subcnt;
+    }
+
+    int getcomcnt() const {
+        return comcnt;
+    }
+
+    void addcomment(const Comment* c) {
+        comments[comcnt++] = *c;
+    }
+
+    vector<Comment> getcomment() const {
+
+        vector<Comment> res;
+        for(int i=0; i<comcnt; i++){
+            res.push_back(comments[i]);
+        }
+        return res;
+
     }
 
 
@@ -229,10 +274,8 @@ public:
 };
 
 
-class TextItem : public Item{
 
-    // length
-    size_t textlen;
+class TextItem : public Item{
 
     // content
     char text[MAXLEN];    // text
@@ -242,8 +285,9 @@ public:
     TextItem(int i, int u, Datetime t, const char* textbuf):
         Item(TEXTITEM, i, u, t)
     {
-        textlen = strlen(textbuf);
-        strncpy(text, textbuf, textlen);
+        settextlen(strlen(textbuf));
+        memset(text, 0, MAXLEN);
+        strncpy(text, textbuf, strlen(textbuf));
     }
 
     const char* gettext() const {
@@ -254,10 +298,6 @@ public:
 
 class MultiItem : public Item{
 
-    // length
-    size_t textlen;
-    size_t multisize;
-
     // content
     char text[MAXLEN];    // text
     char multi[MAXSIZE];  // multi file
@@ -267,11 +307,14 @@ public:
     MultiItem(int i, int u, Datetime t, const char* textbuf, const char* multibuf):
         Item(MULTIITEM, i, u, t)
     {
-        textlen = strlen(textbuf);
-        multisize = sizeof(multibuf);
+        settextlen(strlen(textbuf));
+        setmultisize(sizeof(multibuf));
+
+        memset(text, 0, MAXLEN);
+        memset(multi, 0, MAXSIZE);
 
         strncpy(text, textbuf, strlen(textbuf));
-        memcpy(multi, multibuf, multisize);
+        memcpy(multi, multibuf, MAXSIZE);
     }
 
     const char* gettext() const {
@@ -300,7 +343,7 @@ class ItemList {//线程安全的内容项结构，采用写者优先解法
     pthread_mutex_t stop;   // mutex on writers
 
     map<int, Item*>ilist;   // Red-Black Tree 
-    int listlen;  
+    int cnt;                // item count  
 
 public:
 
@@ -315,7 +358,7 @@ public:
         readcount = writecount = 0;
 
         ilist.clear();
-        listlen = 0;
+        cnt = 0;
 
     }
 
@@ -329,8 +372,8 @@ public:
 
         P(&wmutex);
 
-        int index = it->getindex();
-        ilist[index] = it;
+        it->setindex(++cnt);
+        ilist[cnt] = it;
 
         V(&wmutex);
 
@@ -574,262 +617,4 @@ public:
 
 #endif // SERVER_H
 
-#define DEFAULTITEM 0     // default item
-#define TEXTITEM 1        // text item
-#define MULTIITEM 2       // mutlimedia item
 
-#define INIT pthread_mutex_init
-#define P pthread_mutex_lock
-#define V pthread_mutex_unlock
-
-#define Datetime struct tm
-
-
-Datetime gettime(){
-
-    time_t t;
-    Datetime* tmp; 
-
-	time(&t);
-    tmp = localtime(&t);
-	
-    return *tmp;
-
-}
-
-struct RequestHeader {
-
-    int Htype;    // header type
-    int userID;
-
-    int itemtype;        // type of item
-    int textlen;         // length of text
-    int multilen;        // length of multimedia
-
-    int getnum;   // item num requested
-
-    RequestHeader(int t, int u, int it, int g=0):Htype(t),userID(u),itemtype(it),getnum(g){
-        textlen = multilen = 0;
-    }
-};
-
-struct RespondHeader {
-
-    int Htype;    // header type
-    int userID;
-
-    int seqlen;   // sequence length
-    int itemt[MAXSLEN];        // type array of items
-    int textiteml[MAXSLEN];    //length array of text items
-    int multiiteml[MAXSLEN];   //length array of multimedia items
-
-    RespondHeader(int t, int u, int s):Htype(t),userID(u),seqlen(s){
-        memset(itemt, 0 ,sizeof(itemt));
-        memset(textiteml, 0 ,sizeof(textiteml));
-        memset(multiiteml, 0 ,sizeof(multiiteml));
-    }
-};
-
-
-struct Comment {
-
-    int index;  // comment index
-    int userID;
-    Datetime timestamp;
-    char text[MAXLEN];    // text
-
-    Comment(){}
-    Comment(int i, int u, Datetime t, const char* textbuf):index(i),userID(u),timestamp(t){
-        strncpy(text, textbuf, sizeof(char)*strlen(textbuf));
-    }
-
-};
-
-
-class Item {
-public:
-
-    int Itype;   // item type
-    int index;   // item index
-    int userID;
-    Datetime timestamp;
-
-    int comment_num;    // num of comments
-    int subscribe_num;    // num of subscribes
-    Comment comments[MAXCOM];
-
-    Item* prev;   //double list
-    Item* next;
-
-    Item(int i, int u, Datetime t): Itype(DEFAULTITEM),index(i),userID(u),timestamp(t){
-
-        comment_num = 0;
-        subscribe_num = 0;
-        prev = next = NULL;
-
-    }
-
-    virtual const char* gettext(){return NULL;}
-    virtual const char* getmulti(){return NULL;}
-};
-
-
-class TextItem : public Item{
-public:
-    char text[MAXLEN];    // text
-    TextItem(int i, int u, Datetime t, const char* textbuf):Item(i,u,t){
-        Itype = TEXTITEM;
-        strncpy(text, textbuf, sizeof(char)*strlen(textbuf));
-    }
-    virtual const char* gettext(){
-        return text;
-    }
-};
-
-class MuiltItem : public Item{
-public:
-    char text[MAXLEN];    // text
-    char multifile[MAXSIZE];  // file
-    MuiltItem(int i, int u, Datetime t, const char* textbuf, const char* multibuf):Item(i,u,t){
-        Itype = MULTIITEM;
-        strncpy(text, textbuf, sizeof(char)*strlen(textbuf));
-        memcpy(multifile, multibuf, sizeof(char)*strlen(multibuf));
-    }
-    virtual const char* gettext(){
-        return text;
-    }
-    virtual const char* getmulti(){
-        return  multifile;
-    }
-};
-
-
-
-class ItemList{
-
-    pthread_mutex_t rmutex;  
-	pthread_mutex_t wmutex;
-
-    int readcount;
-    int writecount;
-
-    pthread_mutex_t rclock;  // lock on readcount
-	pthread_mutex_t wclock;  // lock on writecount
-
-    pthread_mutex_t stop;  // mutex on writers
-
-    Item* itemlist;
-    int listlen;  
-
-public:
-
-    ItemList(){
-        
-        INIT(&rmutex, NULL);
-        INIT(&wmutex, NULL);
-        INIT(&rclock, NULL);
-        INIT(&wclock, NULL);
-        INIT(&stop, NULL);
-
-        readcount = writecount = 0;
-
-
-        itemlist = new Item(0, 0, gettime());
-        listlen = 0;
-
-    }
-
-    void append(Item* it){
-
-        P(&wclock);
-        writecount++;
-        if(writecount == 1)
-            P(&rmutex);
-        V(&wclock);
-
-        P(&wmutex);
-
-        it->index = ++listlen;
-        it->next = itemlist;
-        itemlist->prev = it;
-        itemlist = it;  // append at the head of list
-
-
-        V(&wmutex);
-
-        P(&wclock);
-        writecount--;
-        if(writecount == 0)
-            V(&rmutex);
-        V(&wclock);
-
-    }
-
-    Item* getitems(int num){
-
-        P(&stop);   
-        P(&rmutex);  // writer first
-        P(&rclock); 
-        readcount++;
-        if(readcount == 1)
-            P(&wmutex);
-        V(&rclock);
-        V(&rmutex);
-        V(&stop);
-
-        Item* temp = itemlist;
-        Item* newlist = NULL;
-        Item* tail = NULL;
-        for(int i=0; i<num; i++){
-
-            if(!temp)break;
-            if(temp->Itype == TEXTITEM){
-
-                TextItem* curr = new TextItem(temp->index, temp->userID, temp->timestamp, temp->gettext());
-                Item* icurr = (Item*)curr;
-                if(i==0){
-                    newlist = icurr;
-                    tail = newlist;
-                }
-                else{
-                    tail->next = icurr;
-                    icurr->prev = tail;
-                    tail = icurr;
-                }
-
-            }
-            else if(temp->Itype == MULTIITEM){
-
-                MuiltItem* curr = new MuiltItem(temp->index, temp->userID, temp->timestamp, temp->gettext(), temp->getmulti());
-                Item* icurr = (Item*)curr;
-                if(i==0){
-                    newlist = icurr;
-                    tail = newlist;
-                }
-                else{
-                    tail->next = icurr;
-                    icurr->prev = tail;
-                    tail = icurr;
-                }
-
-            }
-            temp = temp->next;
-
-        }
-
-
-        P(&rclock);
-        readcount--;
-        if(readcount == 0)
-            V(&wmutex);
-        V(&rclock);
-
-        return newlist;
-
-    }
-
-};
-
-
-
-#endif // SERVER_H
