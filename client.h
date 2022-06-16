@@ -1,150 +1,372 @@
+/*-------------------------------------------------
+#
+# Project created by QtCreator
+# Author: 赵一鸣
+# CreateTime: 2022-5-9
+# UpdateTime: 2022-5-9
+# Info: Qt树洞
+# Github:https://github.com/ZYM-PKU/Qt-TreeHole
+#
+#-------------------------------------------------*/
 #ifndef CLIENT_H
 #define CLIENT_H
 
-
+#include <QTextCodec>
+#include <QTcpSocket>
+#include <QUdpSocket>
 #include <bits/stdc++.h>
 
+using namespace std;
 
+#define ll long long
+
+//Maxlen
+#define MAXPLEN 24
+#define MAXMLEN 48
 #define MAXLEN 256
 #define MAXSIZE 2048
 #define MAXSLEN 128
+#define MAXCOM 128
 
-#define MAXCOM 100
-
-
-//Htype
-#define GET 0         // get items
-#define SEND 1        // send item
-#define RESPOND 2     // respond
-
-
-#define DEFAULTITEM 0     // default item
-#define TEXTITEM 1        // text item
-#define MULTIITEM 2       // mutlimedia item
-
-
+//Time
 #define Datetime struct tm
 
+namespace THC { //TreeHoleClient
 
-inline Datetime get_time(){
+//Itemtype
+enum Itype{ DEFAULTITEM = 0, TEXTITEM, MULTIITEM };
 
-    time_t t;
-    Datetime* tmp;
+//Header type
+enum Htype{ SIGNUP = 0, LOGIN, GET, UPLOAD, REPLY, SEND };
 
-    time(&t);
-    tmp = localtime(&t);
-
-    return *tmp;
-
-}
+//Error type
+enum State{ SUCCESS = 0, USER_EXIST, USER_NOT_EXIST, PASSWORD_FAIL, ILLEGAL_USER, UPLOAD_FAIL };
 
 
 struct RequestHeader {
 
-    int Htype;    // header type
-    int userID;
+    // header type
+    Htype htype;
 
-    int itemtype;        // type of item
-    int textlen;         // length of text
-    int multilen;        // length of multimedia
+    // login info
+    ll userID;
+    ll token;
 
-    int getnum;   // item num requested
+    char password[MAXPLEN];
 
-    RequestHeader(int t, int u, int it, int g=0):Htype(t),userID(u),itemtype(it),getnum(g){
-        textlen = multilen = 0;
+    // content
+    int seqlen;      // length of upload sequence
+
+    // request
+    int starti;      // start index of items requested
+    int endi;        // end index of items requested
+
+
+    // signup & login
+    RequestHeader(Htype ty, ll uid, const char* pbuf):
+        htype(ty),userID(uid)
+    {
+        memset(password, 0, sizeof(password));
+        strncpy(password, pbuf, strlen(pbuf));
     }
+
+    // get
+    RequestHeader(Htype ty, ll uid, ll to, int si, int ei):
+        htype(ty),userID(uid),token(to),starti(si),endi(ei){}
+
+    // upload
+    RequestHeader(Htype ty, ll uid, ll to, int sl):
+        htype(ty),userID(uid),token(to),seqlen(sl){}
+
+
 };
+
+
 
 struct RespondHeader {
 
-    int Htype;    // header type
-    int userID;
+    // header type
+    Htype htype;
 
+    // state
+    State state;
+
+    // user token
+    ll token;
+
+    // content
     int seqlen;   // sequence length
-    int itemt[MAXSLEN];        // type array of items
-    int textiteml[MAXSLEN];    //length array of text items
-    int multiiteml[MAXSLEN];   //length array of multimedia items
 
-    RespondHeader(int t, int u, int s):Htype(t),userID(u),seqlen(s){
-        memset(itemt, 0 ,sizeof(itemt));
-        memset(textiteml, 0 ,sizeof(textiteml));
-        memset(multiiteml, 0 ,sizeof(multiiteml));
-    }
+    RespondHeader(){}
+
+    // reply
+    RespondHeader(Htype ty, State st, ll tk = 0):
+        htype(ty),state(st),token(tk){}
+
+    // send
+    RespondHeader(Htype ty, int sl):
+        htype(ty),seqlen(sl){}
+
 };
 
+
+
+struct DataHeader {
+
+    Itype itype;
+    size_t textlen;
+    size_t multisize;
+
+    int index;
+    ll uid;
+    Datetime timestamp;
+
+    int comcnt;  // comment count
+
+    // text data
+    DataHeader(Itype ty, int tl):
+        itype(ty),textlen(tl){}
+
+    DataHeader(Itype ty, int tl, int i, ll u, Datetime dt, int cc):
+        itype(ty),textlen(tl),index(i),uid(u),timestamp(dt),comcnt(cc){}
+
+    // multi data
+    DataHeader(Itype ty, int tl, int ms):
+        itype(ty),textlen(tl),multisize(ms){}
+
+    DataHeader(Itype ty, int tl, int ms, int i, ll u, Datetime dt, int cc):
+        itype(ty),textlen(tl),multisize(ms),index(i),uid(u),timestamp(dt),comcnt(cc){}
+
+};
 
 
 struct Comment {
 
-    int index; //comment index
-    int userID;
+    int index;
+
+    // user info
+    ll userID;
+
+    // time
     Datetime timestamp;
-    char text[MAXLEN];    // text
+
+    // length
+    size_t textlen;
+
+    // content
+    char text[MAXLEN];
+
+
     Comment(){}
-    Comment(int i, int u, Datetime t, const char* textbuf):index(i),userID(u),timestamp(t){
-        strncpy(text, textbuf, sizeof(char)*strlen(textbuf));
+    Comment(int i, int u, Datetime t, const char* textbuf):
+        index(i),userID(u),timestamp(t)
+    {
+        textlen = strlen(textbuf);
+        strncpy(text, textbuf, textlen);
     }
 
 };
+
 
 class Item {
-public:
 
-    int Itype;   // item type
-    int index;   // item index
-    int userID;
+    // item type
+    Itype itype;
+    int index;
+
+    // user info
+    ll userID;
+
+    // time info
     Datetime timestamp;
 
-    int comment_num;    // num of comments
-    int subscribe_num;    // num of subscribes
-    Comment comments[MAXCOM];
+    // comments
+    int subcnt;       // subscribe count
+    int comcnt;       // comment count
+    Comment comments[MAXCOM];     // short comments
 
-    Item* prev;   //double list
-    Item* next;
+    // content info
+    size_t textlen;
+    size_t multisize;
 
-    Item(int i, int u, Datetime t): Itype(DEFAULTITEM),index(i),userID(u),timestamp(t){
+protected:
+    // base item 声明保护，防止基类初始化
+    Item(Itype it, int i, int u, Datetime t):
+        itype(it),index(i),userID(u),timestamp(t)
+    {
+        subcnt = 0;
+        comcnt = 0;
+        textlen = 0;
+        multisize = 0;
+    }
 
-        comment_num = 0;
-        subscribe_num = 0;
-        prev = next = NULL;
+public:
+
+    Itype getitype() const {
+        return itype;
+    }
+
+    ll getuid() const {
+        return userID;
+    }
+
+    Datetime gettimestamp() const {
+        return timestamp;
+    }
+
+    int getindex() const {
+        return index;
+    }
+
+    void setindex(int i) {
+        index = i;
+    }
+
+    size_t gettextlen() const {
+        return textlen;
+    }
+
+    void settextlen(size_t l){
+        textlen = l;
+    }
+
+    void setmultisize(size_t s){
+        multisize = s;
+    }
+
+    size_t getmultisize() const {
+        return multisize;
+    }
+
+    int getsubcnt() const {
+        return subcnt;
+    }
+
+    int getcomcnt() const {
+        return comcnt;
+    }
+
+    void addcomment(const Comment* c) {
+        comments[comcnt++] = *c;
+    }
+
+    vector<Comment> getcomment() const {
+
+        vector<Comment> res;
+        for(int i=0; i<comcnt; i++){
+            res.push_back(comments[i]);
+        }
+        return res;
 
     }
 
-    virtual const char* gettext(){return NULL;}
-    virtual const char* getmulti(){return NULL;}
+
+    friend bool operator< (const Item& it1, const Item& it2){
+        return it1.index < it2.index;
+    }
+
 };
+
 
 
 class TextItem : public Item{
-public:
+
+    // content
     char text[MAXLEN];    // text
-    TextItem(int i, int u, Datetime t, const char* textbuf):Item(i,u,t){
-        Itype = TEXTITEM;
-        strncpy(text, textbuf, sizeof(char)*strlen(textbuf));
+
+public:
+
+    TextItem(int i, int u, Datetime t, const char* textbuf):
+        Item(TEXTITEM, i, u, t)
+    {
+        settextlen(strlen(textbuf));
+        memset(text, 0, MAXLEN);
+        strncpy(text, textbuf, strlen(textbuf));
     }
-    virtual const char* gettext(){
+
+    const char* gettext() const {
         return text;
     }
+
+};
+
+class MultiItem : public Item{
+
+    // content
+    char text[MAXLEN];    // text
+    char multi[MAXSIZE];  // multi file
+
+public:
+
+    MultiItem(int i, int u, Datetime t, const char* textbuf, const char* multibuf):
+        Item(MULTIITEM, i, u, t)
+    {
+        settextlen(strlen(textbuf));
+        setmultisize(sizeof(multibuf));
+
+        memset(text, 0, MAXLEN);
+        memset(multi, 0, MAXSIZE);
+
+        strncpy(text, textbuf, strlen(textbuf));
+        memcpy(multi, multibuf, MAXSIZE);
+    }
+
+    const char* gettext() const {
+        return text;
+    }
+
+    const char* getmulti() const {
+        return multi;
+    }
+
 };
 
 
+class User {
 
-class MuiltItem : public Item{
+    // user info
+    ll userID;
+    ll token;
+    char password[MAXPLEN];
+
+    // socket
+    QTcpSocket* TSocket;
+
 public:
-    char text[MAXLEN];    // text
-    char multifile[MAXSIZE];  // file
-    MuiltItem(int i, int u, Datetime t, const char* textbuf, const char* multibuf):Item(i,u,t){
-        Itype = MULTIITEM;
-        strncpy(text, textbuf, sizeof(char)*strlen(textbuf));
-        memcpy(multifile, multibuf, sizeof(char)*strlen(multibuf));
+
+    // temp user
+    User(){token = 0;}
+
+    // base user
+    User(int uid, char* pbuf):
+        userID(uid)
+    {
+        token = 0;
+        memset(password, 0, sizeof(password));
+        strncpy(password, pbuf, strlen(pbuf));
     }
-    virtual const char* gettext(){
-        return text;
+
+    ll gettoken(){
+        return token;
     }
-    virtual const char* getmulti(){
-        return  multifile;
+
+    void bindsocket(QTcpSocket* sk){
+        TSocket = sk;
     }
+
+    bool signup();
+    bool login();
+    bool sendtext(const char* tbuf);
+    bool sendmulti(const char* tbuf, const char* mbuf);
+    vector<Item*> getitems(int starti, int endi);
+    void getcomment(Item* it, int comcnt);
+
+
 };
+
+
+};
+
 
 
 

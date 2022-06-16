@@ -1,7 +1,7 @@
 /*-------------------------------------------------
 #
 # Project created by QtCreator
-# Author: 赵一鸣
+# Author: 赵一鸣/蒋劲/杨明
 # CreateTime: 2022-5-9
 # UpdateTime: 2022-5-9
 # Info: Qt树洞
@@ -14,10 +14,17 @@
 #include <QDateTime>
 #include <QDebug>
 #include <bits/stdc++.h>
-using namespace std;
-
 #include "client.h"
 
+using namespace std;
+using namespace THC;
+
+
+#define IP "162.105.101.249"
+#define PORT 9999
+
+char password[] = "1919810";
+User me(114514ll, password);
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -26,10 +33,11 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     resize(1200, 900);
 
+
     //初始化套接字对象
     TSocket = new QTcpSocket(this);
     //链接服务器
-    TSocket->connectToHost(QHostAddress("162.105.101.249"), 9999);
+    TSocket->connectToHost(QHostAddress(IP), PORT);
     if(!TSocket->waitForConnected(30000))
     {
          qDebug() << "Connection failed";
@@ -48,60 +56,27 @@ void MainWindow::on_pushButton_clicked()
 {
     QString msg = ui->textEdit->toPlainText();
     ui->textEdit->setText("");
-    const char* textbuf = msg.toStdString().c_str();
 
-    RequestHeader header(SEND, 0, TEXTITEM);
-    header.textlen = sizeof(char)*strlen(textbuf);
-
-    QByteArray barray;
-    barray.append(reinterpret_cast<char*>(&header), sizeof(header));
-
-    TSocket->write(barray);
-    TSocket->flush();
-
-    TSocket->write(textbuf);
-    TSocket->flush();
+    string str = msg.toStdString();
+    const char* textbuf = str.c_str();
 
 
+    if(me.gettoken() == 0){
+        me.bindsocket(TSocket);
+        me.signup();
+        me.login();
+    }
 
-//    bool isSending = true; // 发送中
+    me.sendtext(textbuf);
+    auto v = me.getitems(1,100);
+    for(auto it : v){
+        if(it->getitype() == TEXTITEM){
+            TextItem* tit = reinterpret_cast<TextItem*>(it);
+            cout<<"user "<<tit->getuid()<<" says "<<tit->gettext()<<endl;
+        }
+    }
+    cout<<"success"<<endl;
 
-//    qDebug()<<"addMessage" << msg << time << ui->listWidget->count();
-//    if(ui->listWidget->count()%2) {
-//        if(isSending) {
-//            dealMessageTime(time);
-
-//            QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
-//            QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
-//            dealMessage(messageW, item, msg, time, QNChatMessage::User_Me);
-//        } else {
-//            bool isOver = true;
-//            for(int i = ui->listWidget->count() - 1; i > 0; i--) {
-//                QNChatMessage* messageW = (QNChatMessage*)ui->listWidget->itemWidget(ui->listWidget->item(i));
-//                if(messageW->text() == msg) {
-//                    isOver = false;
-//                    messageW->setTextSuccess();
-//                }
-//            }
-//            if(isOver) {
-//                dealMessageTime(time);
-
-//                QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
-//                QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
-//                dealMessage(messageW, item, msg, time, QNChatMessage::User_Me);
-//                messageW->setTextSuccess();
-//            }
-//        }
-//    } else {
-//        if(msg != "") {
-//            dealMessageTime(time);
-
-//            QNChatMessage* messageW = new QNChatMessage(ui->listWidget->parentWidget());
-//            QListWidgetItem* item = new QListWidgetItem(ui->listWidget);
-//            dealMessage(messageW, item, msg, time, QNChatMessage::User_She);
-//        }
-//    }
-//    ui->listWidget->setCurrentRow(ui->listWidget->count()-1);
 }
 
 void MainWindow::dealMessage(QNChatMessage *messageW, QListWidgetItem *item, QString text, QString time,  QNChatMessage::User_Type type)

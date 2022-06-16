@@ -1,7 +1,7 @@
 /*-------------------------------------------------
 #
 # Project created by QtCreator
-# Author: 赵一鸣
+# Author: 赵一鸣/蒋劲/杨明
 # CreateTime: 2022-5-9
 # UpdateTime: 2022-5-9
 # Info: Qt树洞
