@@ -136,7 +136,7 @@ bool User::login(){
 }
 
 
-/* 发送文本API
+/* 发送文本条目API
  * 参数：字符数组
  * 返回值：true（成功）/ false（失败）
  * 注：失败时打印相应信息
@@ -210,7 +210,7 @@ bool User::sendtext(const char *tbuf){
 
 }
 
-/* 发送文本API
+/* 发送多媒体条目API
  * 参数：字符数组, 文件缓存
  * 返回值：true（成功）/ false（失败）
  * 注：失败时打印相应信息
