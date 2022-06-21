@@ -19,7 +19,13 @@
 #include <QDebug>
 #include <QTimer>
 #include <QString>
+#include <QDialog>
 #include "chatmessage/qnchatmessage.h"
+#include "client.h"
+#include "login.h"
+#include "enroll.h"
+using namespace std;
+using namespace THC;
 
 namespace Ui {
 class MainWindow;
@@ -33,13 +39,11 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-    // UDP通信
-    QUdpSocket *USocket;
-    // TCP通信
-    QTcpSocket *TSocket;
 
     void dealMessage(QNChatMessage *messageW, QListWidgetItem *item, QString text, QString time, QNChatMessage::User_Type type);
     void dealMessageTime(QString curMsgTime);
+
+    void bind(User* u){user=u;}
 
 
 private slots:
@@ -47,6 +51,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+    User* user;
 };
 
 #endif // MAINWINDOW_H

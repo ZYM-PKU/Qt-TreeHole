@@ -15,16 +15,12 @@
 #include <QDebug>
 #include <bits/stdc++.h>
 #include "client.h"
+#include "login.h"
+#include "enroll.h"
 
 using namespace std;
 using namespace THC;
 
-
-#define IP "162.105.101.249"
-#define PORT 9999
-
-char password[] = "1919810";
-User me(114514ll, password);
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -32,25 +28,13 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     resize(1200, 900);
-
-
-    //初始化套接字对象
-    TSocket = new QTcpSocket(this);
-    //链接服务器
-    TSocket->connectToHost(QHostAddress(IP), PORT);
-    if(!TSocket->waitForConnected(30000))
-    {
-         qDebug() << "Connection failed";
-         return;
-     }
-     qDebug() << "Connect successfully";
-
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
 }
+
 
 void MainWindow::on_pushButton_clicked()
 {
@@ -60,15 +44,8 @@ void MainWindow::on_pushButton_clicked()
     string str = msg.toStdString();
     const char* textbuf = str.c_str();
 
-
-    if(me.gettoken() == 0){
-        me.bindsocket(TSocket);
-        me.signup();
-        me.login();
-    }
-
-    me.sendtext(textbuf);
-    auto v = me.getitems(1,100);
+    user->sendtext(textbuf);
+    auto v = user->getitems(1,100);
     for(auto it : v){
         if(it->getitype() == TEXTITEM){
             TextItem* tit = reinterpret_cast<TextItem*>(it);

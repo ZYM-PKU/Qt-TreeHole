@@ -11,6 +11,7 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
+#include <QDialog>
 #include <QTextCodec>
 #include <QTcpSocket>
 #include <QUdpSocket>
@@ -19,6 +20,9 @@
 using namespace std;
 
 #define ll long long
+
+#define IP "162.105.101.249"
+#define PORT 9999
 
 //Maxlen
 #define MAXPLEN 24
@@ -329,19 +333,28 @@ class User {
     ll token;
     char password[MAXPLEN];
 
-    // socket
-    QTcpSocket* TSocket;
+    // UDP通信
+    QUdpSocket *USocket;
+    // TCP通信
+    QTcpSocket *TSocket;
 
 public:
 
-    // temp user
-    User(){token = 0;}
-
-    // base user
-    User(int uid, char* pbuf):
-        userID(uid)
-    {
+    // init user
+    User(QDialog* qd){
         token = 0;
+        //初始化套接字对象
+        TSocket = new QTcpSocket(qd);
+        //链接服务器
+        TSocket->connectToHost(QHostAddress(IP), PORT);
+        if(!TSocket->waitForConnected(30000))
+             qDebug() << "Connection failed";
+         else
+            qDebug() << "Connect successfully";
+    }
+
+    void init(int uid, const char* pbuf){
+        userID = uid;
         memset(password, 0, sizeof(password));
         strncpy(password, pbuf, strlen(pbuf));
     }

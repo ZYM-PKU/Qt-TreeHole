@@ -19,12 +19,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     chatmessage/qnchatmessage.cpp \
     client.cpp \
+    enroll.cpp \
+    login.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     chatmessage/qnchatmessage.h \
     client.h \
+    enroll.h \
+    login.h \
     mainwindow.h
 
 FORMS += \
