@@ -94,7 +94,7 @@ void LoginForm::Login()
        QMessageBox::warning(this, tr("警告！"),tr("用户名或密码错误！"),QMessageBox::Yes);
 
     // 清空输入框内容
-       userNameLEd->clear();
+       //userNameLEd->clear();
        pwdLEd->clear();
 
        //光标定位

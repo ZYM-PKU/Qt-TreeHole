@@ -21,7 +21,8 @@ int main(int argc, char *argv[])
 
     LoginForm Login;
     MainWindow w;
-    User* user = new User((QDialog*)&w);
+
+    User* user = new User;
 
     Login.bind(user);
     w.bind(user);

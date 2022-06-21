@@ -136,7 +136,10 @@ void *client_thread(void *arg)
     while(1) {
 
 		memset(hbuf, 0 ,sizeof(hbuf));
-    	if((ret = read(connfd, hbuf, sizeof(hbuf))) != sizeof(hbuf)){// 返回值为实际接收的字节数，ret <= 0 表示客户端断开连接
+		if((ret = read(connfd, hbuf, sizeof(hbuf))) <= 0){
+			detach(connfd);
+		}
+    	if(ret != sizeof(hbuf)){// 返回值为实际接收的字节数，ret <= 0 表示客户端断开连接
 			cerr<< "header size error" <<endl;
 			logout(uid);
 			detach(connfd);
@@ -262,6 +265,8 @@ void signup(const ll uid, const char* password, int connfd){
 
 	State res = UT.signup(uid, password);
 	reply(res, 0, connfd);
+
+	cout<<"User "<<uid<<" sign up with password "<<"\""<<password<<"\""<<endl;
 	
 }
 
@@ -272,8 +277,11 @@ void login(const ll uid, const char* password, int connfd){
 	ll token = 0;
 
 	if(res == SUCCESS){
+		
 		token = random();  // generate random token for user
 		UT.addtoken(uid, token);
+
+		cout<<"User "<<uid<<" login with token "<<"\""<<token<<"\""<<endl;
 	}
 
 	reply(res, token, connfd);

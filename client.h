@@ -341,10 +341,10 @@ class User {
 public:
 
     // init user
-    User(QDialog* qd){
+    User(){
         token = 0;
         //初始化套接字对象
-        TSocket = new QTcpSocket(qd);
+        TSocket = new QTcpSocket;
         //链接服务器
         TSocket->connectToHost(QHostAddress(IP), PORT);
         if(!TSocket->waitForConnected(30000))
