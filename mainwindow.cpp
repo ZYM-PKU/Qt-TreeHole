@@ -49,10 +49,17 @@ void MainWindow::on_pushButton_clicked()
     for(auto it : v){
         if(it->getitype() == TEXTITEM){
             TextItem* tit = reinterpret_cast<TextItem*>(it);
-            cout<<"user "<<tit->getuid()<<" says "<<tit->gettext()<<endl;
+            cout<<"user "<<tit->getuid()<<" says "<<tit->gettext()<<" with "<<tit->getsubcnt()<<" subscribers "<<endl;
+            vector<Comment> vc = tit->getcomment();
+            for(auto c : vc){
+                cout<<"Comment: "<<c.text<<" from user "<<c.userID<<endl;
+            }
         }
     }
     cout<<"success"<<endl;
+
+    user->subscribe(1);
+    user->comment(1,"wtf is that?");
 
 }
 

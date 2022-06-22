@@ -31,6 +31,7 @@ using namespace std;
 #define MAXSIZE 2048
 #define MAXSLEN 128
 #define MAXCOM 128
+#define MAXUSER 64
 
 //Time
 #define Datetime struct tm
@@ -41,7 +42,7 @@ namespace THC { //TreeHoleClient
 enum Itype{ DEFAULTITEM = 0, TEXTITEM, MULTIITEM };
 
 //Header type
-enum Htype{ SIGNUP = 0, LOGIN, GET, UPLOAD, REPLY, SEND };
+enum Htype{ SIGNUP = 0, LOGIN, GET, UPLOAD, REPLY, SEND, SUBSCRIBE, COMMENT };
 
 //Error type
 enum State{ SUCCESS = 0, USER_EXIST, USER_NOT_EXIST, PASSWORD_FAIL, ILLEGAL_USER, UPLOAD_FAIL };
@@ -65,6 +66,9 @@ struct RequestHeader {
     int starti;      // start index of items requested
     int endi;        // end index of items requested
 
+    //subscribe & comment
+    int index;       // target item index
+
 
     // signup & login
     RequestHeader(Htype ty, ll uid, const char* pbuf):
@@ -81,6 +85,10 @@ struct RequestHeader {
     // upload
     RequestHeader(Htype ty, ll uid, ll to, int sl):
         htype(ty),userID(uid),token(to),seqlen(sl){}
+
+    // subscribe & comment  (pass pass to get compiler quiet)
+    RequestHeader(Htype ty, ll uid, ll to, int in, bool pass):
+        htype(ty),userID(uid),token(to),index(in){pass = true;}
 
 
 };
@@ -114,9 +122,9 @@ struct RespondHeader {
 };
 
 
-
 struct DataHeader {
 
+    // base info
     Itype itype;
     size_t textlen;
     size_t multisize;
@@ -125,24 +133,25 @@ struct DataHeader {
     ll uid;
     Datetime timestamp;
 
-    int comcnt;  // comment count
+    // count
+    int subcnt;
+    int comcnt;
 
     // text data
     DataHeader(Itype ty, int tl):
         itype(ty),textlen(tl){}
 
-    DataHeader(Itype ty, int tl, int i, ll u, Datetime dt, int cc):
-        itype(ty),textlen(tl),index(i),uid(u),timestamp(dt),comcnt(cc){}
+    DataHeader(Itype ty, int tl, int i, ll u, Datetime dt, int sc, int cc):
+        itype(ty),textlen(tl),index(i),uid(u),timestamp(dt),subcnt(sc),comcnt(cc){}
 
     // multi data
     DataHeader(Itype ty, int tl, int ms):
         itype(ty),textlen(tl),multisize(ms){}
 
-    DataHeader(Itype ty, int tl, int ms, int i, ll u, Datetime dt, int cc):
-        itype(ty),textlen(tl),multisize(ms),index(i),uid(u),timestamp(dt),comcnt(cc){}
+    DataHeader(Itype ty, int tl, int ms, int i, ll u, Datetime dt, int sc, int cc):
+        itype(ty),textlen(tl),multisize(ms),index(i),uid(u),timestamp(dt),subcnt(sc),comcnt(cc){}
 
 };
-
 
 struct Comment {
 
@@ -186,6 +195,7 @@ class Item {
 
     // comments
     int subcnt;       // subscribe count
+    ll subusers[MAXUSER];     // uid of users who subscribe
     int comcnt;       // comment count
     Comment comments[MAXCOM];     // short comments
 
@@ -242,16 +252,28 @@ public:
         return multisize;
     }
 
+    void addsubscribe(ll uid) {
+        for(int i=0; i<subcnt; i++){
+            if(subusers[i] == uid)return;
+        }
+        subusers[subcnt++] = uid;
+    }
+
     int getsubcnt() const {
         return subcnt;
+    }
+
+    void setsubcnt(int sc) {
+        subcnt = sc;
     }
 
     int getcomcnt() const {
         return comcnt;
     }
 
-    void addcomment(const Comment* c) {
-        comments[comcnt++] = *c;
+    void addcomment(Comment c) {
+        c.index = comcnt + 1;
+        comments[comcnt++] = c;
     }
 
     vector<Comment> getcomment() const {
@@ -270,7 +292,6 @@ public:
     }
 
 };
-
 
 
 class TextItem : public Item{
@@ -373,6 +394,8 @@ public:
     bool sendmulti(const char* tbuf, const char* mbuf);
     vector<Item*> getitems(int starti, int endi);
     void getcomment(Item* it, int comcnt);
+    bool subscribe(int index);
+    bool comment(int index, const char* tbuf);
 
 
 };

@@ -316,7 +316,7 @@ void User::getcomment(Item* it, int comcnt){
 
         Comment* com = reinterpret_cast<Comment*>(cbuf);
 
-        it->addcomment(com);
+        it->addcomment(*com);
     }
 
 }
@@ -395,6 +395,7 @@ vector<Item*> User::getitems(int starti, int endi){
         int index = dh->index;
         ll uid = dh->uid;
         Datetime timestamp = dh->timestamp;
+        int subcnt = dh->subcnt;
         int comcnt = dh->comcnt;
 
 
@@ -415,6 +416,7 @@ vector<Item*> User::getitems(int starti, int endi){
             else{
                 TextItem* tit = new TextItem(index, uid, timestamp, textbuf);
                 Item* it = reinterpret_cast<Item*>(tit);
+                it->setsubcnt(subcnt);
                 getcomment(it, comcnt);
                 ans.push_back(it);
             }
@@ -449,6 +451,7 @@ vector<Item*> User::getitems(int starti, int endi){
                 else{
                     MultiItem* mit = new MultiItem(index, uid, timestamp, textbuf, multibuf);
                     Item* it = reinterpret_cast<Item*>(mit);
+                    it->setsubcnt(subcnt);
                     getcomment(it, comcnt);
                     ans.push_back(it);
                 }
@@ -463,6 +466,119 @@ vector<Item*> User::getitems(int starti, int endi){
     }
 
     return ans;
+
+}
+
+
+bool User::subscribe(int index){
+
+
+    // send request
+    RequestHeader header(SUBSCRIBE, userID, token, index, true);
+
+    ssize_t ret;
+    char hbuf[sizeof(RequestHeader)+4];
+
+    memset(hbuf, 0, sizeof(hbuf));
+    memcpy(hbuf, &header, sizeof(RequestHeader));
+
+    if((ret = TSocket->write(hbuf, sizeof(hbuf))) != sizeof(hbuf)){
+        cerr<< "send request failed" <<endl;
+        return false;
+    }
+
+    TSocket->flush();
+    TSocket->waitForReadyRead();
+
+
+    // get respond
+    char rbuf[sizeof(RespondHeader)+4];
+    if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
+        cerr<< "get respond failed" <<endl;
+        return false;
+    }
+
+    RespondHeader* res = reinterpret_cast<RespondHeader*>(rbuf);
+
+    State st = res->state;
+
+    if(st != SUCCESS){
+        cerr<< "identification failed" <<endl;
+        return false;
+    }
+    else{
+        return true;
+    }
+
+}
+
+
+bool User::comment(int index, const char *tbuf){
+
+    int tlen = strlen(tbuf);
+    if(tlen >= MAXLEN){
+        cerr<< "text too long" <<endl;
+        return false;
+    }
+
+    // send request
+    RequestHeader header(COMMENT, userID, token, index, true);
+
+    ssize_t ret;
+    char hbuf[sizeof(RequestHeader)+4];
+
+    memset(hbuf, 0, sizeof(hbuf));
+    memcpy(hbuf, &header, sizeof(RequestHeader));
+
+    if((ret = TSocket->write(hbuf, sizeof(hbuf))) != sizeof(hbuf)){
+        cerr<< "send request failed" <<endl;
+        return false;
+    }
+
+    TSocket->flush();
+    TSocket->waitForReadyRead();
+
+
+    // get respond
+    char rbuf[sizeof(RespondHeader)+4];
+    if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
+        cerr<< "get respond failed" <<endl;
+        return false;
+    }
+
+    RespondHeader* res = reinterpret_cast<RespondHeader*>(rbuf);
+
+    State st = res->state;
+
+    if(st != SUCCESS){
+        cerr<< "identification failed" <<endl;
+        return false;
+    }
+
+    // send list
+    DataHeader dh(TEXTITEM, tlen);
+
+    ssize_t dret;
+    char dhbuf[sizeof(DataHeader)+4];
+
+    memset(dhbuf, 0, sizeof(dhbuf));
+    memcpy(dhbuf, &dh, sizeof(DataHeader));
+
+    if((dret = TSocket->write(dhbuf, sizeof(dhbuf))) != sizeof(dhbuf)){
+        cerr<< "data header error" <<endl;
+        return false;
+    }
+
+    TSocket->flush();
+
+    if((dret = TSocket->write(tbuf, tlen)) != tlen){
+        cerr<< "send comment fail" <<endl;
+        return false;
+    }
+
+    TSocket->flush();
+
+    return true;
 
 }
 
