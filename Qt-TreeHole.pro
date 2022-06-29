@@ -1,6 +1,5 @@
 QT       += core gui
 QT += network
-
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
@@ -17,22 +16,25 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    chatmessage/qnchatmessage.cpp \
     client.cpp \
+    main.cpp \
+    mainwindow.cpp \
+    newwindow.cpp \
     enroll.cpp \
     login.cpp \
-    main.cpp \
-    mainwindow.cpp
+    subcIDs.cpp
 
 HEADERS += \
-    chatmessage/qnchatmessage.h \
     client.h \
+    mainwindow.h \
+    newwindow.h \
     enroll.h \
     login.h \
-    mainwindow.h
+    subcIDs.h
 
 FORMS += \
-    mainwindow.ui
+    mainwindow.ui \
+    newwindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -43,4 +45,9 @@ DISTFILES += \
     img/Customer Copy.png \
     img/CustomerService.png \
     img/bg.jpg \
-    img/loading4.gif
+    img/loading4.gif \
+    img/enrollbackground.jpg \
+    img/loginbackground.jpg \
+    img/Customer Copy.png \
+    img/Customer Copy.png \
+    img/Customer Copy.png

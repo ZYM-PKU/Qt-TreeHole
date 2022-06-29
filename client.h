@@ -11,30 +11,45 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include <QDialog>
 #include <QTextCodec>
 #include <QTcpSocket>
 #include <QUdpSocket>
 #include <bits/stdc++.h>
+#include <QString>
 
 using namespace std;
 
 #define ll long long
 
 #define IP "162.105.101.249"
-#define PORT 9999
+#define PORT 9900
 
 //Maxlen
 #define MAXPLEN 24
 #define MAXMLEN 48
-#define MAXLEN 256
-#define MAXSIZE 2048
+#define MAXLEN 1024
+#define MAXSIZE 1048576  // 1Mb
 #define MAXSLEN 128
 #define MAXCOM 128
+#define MAXSUB 128
 #define MAXUSER 64
+#define NAMEBYTE 10
+
 
 //Time
-#define Datetime struct tm
+struct Datetime {
+
+    int tm_hour;
+    int tm_isdst;
+    int tm_mday;
+    int tm_min;
+    int tm_mon;
+    int tm_sec;
+    int tm_wday;
+    int yday;
+    int year;
+
+};
 
 namespace THC { //TreeHoleClient
 
@@ -42,7 +57,7 @@ namespace THC { //TreeHoleClient
 enum Itype{ DEFAULTITEM = 0, TEXTITEM, MULTIITEM };
 
 //Header type
-enum Htype{ SIGNUP = 0, LOGIN, GET, UPLOAD, REPLY, SEND, SUBSCRIBE, COMMENT };
+enum Htype{ SIGNUP = 0, LOGIN, GET, UPLOAD, REPLY, SEND, SUBSCRIBE, COMMENT, DESUBSCRIBE };
 
 //Error type
 enum State{ SUCCESS = 0, USER_EXIST, USER_NOT_EXIST, PASSWORD_FAIL, ILLEGAL_USER, UPLOAD_FAIL };
@@ -69,7 +84,6 @@ struct RequestHeader {
     //subscribe & comment
     int index;       // target item index
 
-
     // signup & login
     RequestHeader(Htype ty, ll uid, const char* pbuf):
         htype(ty),userID(uid)
@@ -85,11 +99,9 @@ struct RequestHeader {
     // upload
     RequestHeader(Htype ty, ll uid, ll to, int sl):
         htype(ty),userID(uid),token(to),seqlen(sl){}
-
     // subscribe & comment  (pass pass to get compiler quiet)
     RequestHeader(Htype ty, ll uid, ll to, int in, bool pass):
         htype(ty),userID(uid),token(to),index(in){pass = true;}
-
 
 };
 
@@ -109,6 +121,9 @@ struct RespondHeader {
     // content
     int seqlen;   // sequence length
 
+    // index
+    int index;
+
     RespondHeader(){}
 
     // reply
@@ -120,6 +135,7 @@ struct RespondHeader {
         htype(ty),seqlen(sl){}
 
 };
+
 
 
 struct DataHeader {
@@ -136,22 +152,24 @@ struct DataHeader {
     // count
     int subcnt;
     int comcnt;
+    int comPersonCnt;
 
     // text data
     DataHeader(Itype ty, int tl):
         itype(ty),textlen(tl){}
 
-    DataHeader(Itype ty, int tl, int i, ll u, Datetime dt, int sc, int cc):
-        itype(ty),textlen(tl),index(i),uid(u),timestamp(dt),subcnt(sc),comcnt(cc){}
+    DataHeader(Itype ty, int tl, int i, ll u, Datetime dt, int sc, int cc, int cp):
+        itype(ty),textlen(tl),index(i),uid(u),timestamp(dt),subcnt(sc),comcnt(cc),comPersonCnt(cp){}
 
     // multi data
     DataHeader(Itype ty, int tl, int ms):
         itype(ty),textlen(tl),multisize(ms){}
 
-    DataHeader(Itype ty, int tl, int ms, int i, ll u, Datetime dt, int sc, int cc):
-        itype(ty),textlen(tl),multisize(ms),index(i),uid(u),timestamp(dt),subcnt(sc),comcnt(cc){}
+    DataHeader(Itype ty, int tl, int ms, int i, ll u, Datetime dt, int sc, int cc, int cp):
+        itype(ty),textlen(tl),multisize(ms),index(i),uid(u),timestamp(dt),subcnt(sc),comcnt(cc),comPersonCnt(cp){}
 
 };
+
 
 struct Comment {
 
@@ -159,6 +177,7 @@ struct Comment {
 
     // user info
     ll userID;
+    char name[NAMEBYTE];
 
     // time
     Datetime timestamp;
@@ -175,7 +194,15 @@ struct Comment {
         index(i),userID(u),timestamp(t)
     {
         textlen = strlen(textbuf);
+        memset(name, 0, sizeof(name));
+        memset(text, 0, sizeof(text));
         strncpy(text, textbuf, textlen);
+    }
+    char* getName() {
+        return name;
+    }
+    void setName(char* s) {
+        strncpy(name, s, strlen(s));
     }
 
 };
@@ -197,6 +224,7 @@ class Item {
     int subcnt;       // subscribe count
     ll subusers[MAXUSER];     // uid of users who subscribe
     int comcnt;       // comment count
+    int comPersonCnt;  // 评论的人数，用来分配名字
     Comment comments[MAXCOM];     // short comments
 
     // content info
@@ -212,6 +240,7 @@ protected:
         comcnt = 0;
         textlen = 0;
         multisize = 0;
+        comPersonCnt = 0;
     }
 
 public:
@@ -271,8 +300,15 @@ public:
         return comcnt;
     }
 
-    void addcomment(Comment c) {
-        c.index = comcnt + 1;
+    int getComPerson() const {
+        return comPersonCnt;
+    }
+
+    void setComPerson(int cp){
+        comPersonCnt = cp;
+    }
+
+    void appendcomment(Comment c){
         comments[comcnt++] = c;
     }
 
@@ -291,7 +327,12 @@ public:
         return it1.index < it2.index;
     }
 
+    // 排序
+    friend bool orderByTime(const Item* t1,const Item* t2);
+    friend bool orderByCmtcnt(const Item* t1,const Item* t2);
+    friend bool orderBySubcnt(const Item* t1,const Item* t2);
 };
+
 
 
 class TextItem : public Item{
@@ -390,17 +431,22 @@ public:
 
     bool signup();
     bool login();
-    bool sendtext(const char* tbuf);
-    bool sendmulti(const char* tbuf, const char* mbuf);
+    int sendtext(const char* tbuf);
+    int sendmulti(const char* tbuf, const char* mbuf);
     vector<Item*> getitems(int starti, int endi);
     void getcomment(Item* it, int comcnt);
+    ll getUid() {
+        return userID;
+    }
+
     bool subscribe(int index);
+    bool desubscribe(int index);
     bool comment(int index, const char* tbuf);
-
-
 };
-
-
+// 排序
+bool orderByTime(const Item* t1,const Item* t2);
+bool orderByCmtcnt(const Item* t1,const Item* t2);
+bool orderBySubcnt(const Item* t1,const Item* t2);
 };
 
 

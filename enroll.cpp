@@ -1,12 +1,20 @@
-
+/*-------------------------------------------------
+#
+# Project created by QtCreator
+# Author: 杨明
+# Info: Qt树洞
+# Github:https://github.com/ZYM-PKU/Qt-TreeHole
+#
+#-------------------------------------------------*/
 #include "enroll.h"
 #include <QMessageBox>
 #include <QRegExpValidator>
+#include <QShortcut>
 Enroll::Enroll(QDialog *parent):
     QDialog(parent)
 {
     QPalette palette;
-    QPixmap enrollpixmap("../Qt-Treehole/img/enrollbackground.jpg");
+    QPixmap enrollpixmap("./img/enrollbackground.jpg");
     palette.setBrush(QPalette::Window, QBrush(enrollpixmap));
     this->setPalette(palette);
     this->setWindowTitle(tr("注册界面"));
@@ -44,6 +52,8 @@ Enroll::Enroll(QDialog *parent):
 
 
     //单击退出按钮时 执行 LoginForm::close 槽函数(窗体的关闭函数)
+    QShortcut *key = new QShortcut(QKeySequence(Qt::Key_Return),this);//创建一快捷键“Key_Return”键
+    connect(key,SIGNAL(activated()),this,SLOT(enroll()));//连接到指定的槽函数
     connect(inenrollBtn,&QPushButton::clicked,this,&Enroll::enroll);
     connect(inexitBtn,&QPushButton::clicked,this,&Enroll::close);
 }

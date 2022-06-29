@@ -1,7 +1,7 @@
 /*-------------------------------------------------
 #
 # Project created by QtCreator
-# Author: 赵一鸣/蒋劲/杨明
+# Author: 赵一鸣/蒋敬/杨明
 # CreateTime: 2022-5-9
 # UpdateTime: 2022-5-9
 # Info: Qt树洞
@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 
     Login.bind(user);
     w.bind(user);
+
 
     Login.show();
     if (Login.exec() == QDialog::Accepted)//调用login.exec()，阻塞主控制流，直到完成返回，继续执行主控制流

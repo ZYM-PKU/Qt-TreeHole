@@ -20,17 +20,7 @@ using namespace THC;
 
 namespace THC { //TreeHoleClient
 
-inline Datetime get_time(){
 
-    time_t t;
-    Datetime* tmp;
-
-    time(&t);
-    tmp = localtime(&t);
-
-    return *tmp;
-
-}
 
 
 /* 用户注册API
@@ -55,10 +45,14 @@ bool User::signup(){
     }
 
     TSocket->flush();
-    TSocket->waitForReadyRead();
 
     // get respond
     char rbuf[sizeof(RespondHeader)+4];
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof (rbuf))
+        TSocket->waitForReadyRead();
+
     if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
         cerr<< "get respond failed" <<endl;
         return false;
@@ -105,10 +99,14 @@ bool User::login(){
     }
 
     TSocket->flush();
-    TSocket->waitForReadyRead();
 
     // get respond
     char rbuf[sizeof(RespondHeader)+4];
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof (rbuf))
+        TSocket->waitForReadyRead();
+
     if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
         cerr<< "get respond failed" <<endl;
         return false;
@@ -138,10 +136,10 @@ bool User::login(){
 
 /* 发送文本条目API
  * 参数：字符数组
- * 返回值：true（成功）/ false（失败）
+ * 返回值：条目号
  * 注：失败时打印相应信息
 */
-bool User::sendtext(const char *tbuf){
+int User::sendtext(const char *tbuf){
 
     int tlen = strlen(tbuf);
     if(tlen >= MAXLEN){
@@ -164,11 +162,14 @@ bool User::sendtext(const char *tbuf){
     }
 
     TSocket->flush();
-    TSocket->waitForReadyRead();
-
 
     // get respond
     char rbuf[sizeof(RespondHeader)+4];
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof(rbuf))
+        TSocket->waitForReadyRead();
+
     if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
         cerr<< "get respond failed" <<endl;
         return false;
@@ -182,6 +183,8 @@ bool User::sendtext(const char *tbuf){
         cerr<< "identification failed" <<endl;
         return false;
     }
+
+    int index = res->index;
 
     // send list
     DataHeader dh(TEXTITEM, tlen);
@@ -206,16 +209,16 @@ bool User::sendtext(const char *tbuf){
 
     TSocket->flush();
 
-    return true;
+    return index;
 
 }
 
 /* 发送多媒体条目API
  * 参数：字符数组, 文件缓存
- * 返回值：true（成功）/ false（失败）
+ * 返回值：条目号
  * 注：失败时打印相应信息
 */
-bool User::sendmulti(const char *tbuf, const char* mbuf){
+int User::sendmulti(const char *tbuf, const char* mbuf){
 
     int tlen = strlen(tbuf);
     if(tlen >= MAXLEN){
@@ -223,11 +226,7 @@ bool User::sendmulti(const char *tbuf, const char* mbuf){
         return false;
     }
 
-    int msize = sizeof(mbuf);
-    if(msize >= MAXSIZE){
-        cerr<< "file too large" <<endl;
-        return false;
-    }
+    int msize = MAXSIZE;
 
     // send request
     RequestHeader header(UPLOAD, userID, token, 1);
@@ -244,11 +243,14 @@ bool User::sendmulti(const char *tbuf, const char* mbuf){
     }
 
     TSocket->flush();
-    TSocket->waitForReadyRead();
-
 
     // get respond
     char rbuf[sizeof(RespondHeader)+4];
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof (rbuf))
+        TSocket->waitForReadyRead();
+
     if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
         cerr<< "get respond failed" <<endl;
         return false;
@@ -262,6 +264,8 @@ bool User::sendmulti(const char *tbuf, const char* mbuf){
         cerr<< "identification failed" <<endl;
         return false;
     }
+
+    int index = res->index;
 
     // send list
     DataHeader dh(MULTIITEM, tlen, msize);
@@ -293,7 +297,7 @@ bool User::sendmulti(const char *tbuf, const char* mbuf){
 
     TSocket->flush();
 
-    return true;
+    return index;
 }
 
 
@@ -305,18 +309,20 @@ void User::getcomment(Item* it, int comcnt){
 
     for(int i=0; i<comcnt; i++){
 
-        //TSocket->waitForReadyRead();
-
         memset(cbuf, 0, sizeof(cbuf));
 
-        if((ret = TSocket->read(cbuf, sizeof(Comment))) != sizeof(Comment)){
+        while((size_t)TSocket->bytesAvailable()<sizeof(cbuf))
+           TSocket->waitForReadyRead();
+
+        if((ret = TSocket->read(cbuf, sizeof(cbuf))) != sizeof(cbuf)){
+            cerr<<"ret: "<<ret<<endl;
             cerr<< "get comment failed" <<endl;
             return;
         }
 
         Comment* com = reinterpret_cast<Comment*>(cbuf);
 
-        it->addcomment(*com);
+        it->appendcomment(*com);
     }
 
 }
@@ -344,11 +350,14 @@ vector<Item*> User::getitems(int starti, int endi){
     }
 
     TSocket->flush();
-    TSocket->waitForReadyRead();
-
 
     // get respond
     char rbuf[sizeof(RespondHeader)+4];
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof(rbuf))
+       TSocket->waitForReadyRead();
+
     if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
         cerr<< "get respond failed" <<endl;
         return {};
@@ -364,10 +373,12 @@ vector<Item*> User::getitems(int starti, int endi){
     }
 
 
-    vector<Item*> ans;
-
     // get list
-    TSocket->waitForReadyRead();
+    vector<Item*> ans;
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof(rbuf))
+       TSocket->waitForReadyRead();
 
     if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
         cerr<< "get header failed" <<endl;
@@ -382,7 +393,10 @@ vector<Item*> User::getitems(int starti, int endi){
 
     for(int curr = 0; curr < seqlen; curr++){
 
-        //TSocket->waitForReadyRead();
+        memset(dbuf, 0, sizeof(dbuf));
+
+        while((size_t)TSocket->bytesAvailable()<sizeof(dbuf))
+           TSocket->waitForReadyRead();
 
         if((dret = TSocket->read(dbuf, sizeof(dbuf))) != sizeof(dbuf)){
             cerr<< "header size error" <<endl;
@@ -395,8 +409,9 @@ vector<Item*> User::getitems(int starti, int endi){
         int index = dh->index;
         ll uid = dh->uid;
         Datetime timestamp = dh->timestamp;
-        int subcnt = dh->subcnt;
+        int subcnt=dh->subcnt;
         int comcnt = dh->comcnt;
+        int compersoncnt = dh->comPersonCnt;
 
 
         if(itype == TEXTITEM){
@@ -407,7 +422,8 @@ vector<Item*> User::getitems(int starti, int endi){
             ssize_t pret;
             memset(textbuf, 0, sizeof(textbuf));
 
-            //TSocket->waitForReadyRead();
+            while((size_t)TSocket->bytesAvailable()<(size_t)tlen)
+               TSocket->waitForReadyRead();
 
             if((pret = TSocket->read(textbuf, tlen)) != tlen){
                 cerr<< "textitem length error" <<endl;
@@ -417,6 +433,7 @@ vector<Item*> User::getitems(int starti, int endi){
                 TextItem* tit = new TextItem(index, uid, timestamp, textbuf);
                 Item* it = reinterpret_cast<Item*>(tit);
                 it->setsubcnt(subcnt);
+                it->setComPerson(compersoncnt);
                 getcomment(it, comcnt);
                 ans.push_back(it);
             }
@@ -428,13 +445,14 @@ vector<Item*> User::getitems(int starti, int endi){
             int msize = dh->multisize;
 
             char textbuf[tlen+4];
-            char multibuf[msize+4];
+            char* multibuf = new char[msize+4];
 
             ssize_t pret;
             memset(textbuf, 0, sizeof(textbuf));
-            memset(multibuf, 0, sizeof(multibuf));
+            memset(multibuf, 0, msize+4);
 
-            //TSocket->waitForReadyRead();
+            while((size_t)TSocket->bytesAvailable()<(size_t)tlen)
+               TSocket->waitForReadyRead();
 
             if((pret = TSocket->read(textbuf, tlen)) != tlen){
                 cerr<< "textitem length error" <<endl;
@@ -442,7 +460,8 @@ vector<Item*> User::getitems(int starti, int endi){
             }
             else{
 
-                //TSocket->waitForReadyRead();
+                while((size_t)TSocket->bytesAvailable()<(size_t)msize)
+                   TSocket->waitForReadyRead();
 
                 if((pret = TSocket->read(multibuf, msize)) != msize){
                     cerr<< "multiitem length error" <<endl;
@@ -452,6 +471,7 @@ vector<Item*> User::getitems(int starti, int endi){
                     MultiItem* mit = new MultiItem(index, uid, timestamp, textbuf, multibuf);
                     Item* it = reinterpret_cast<Item*>(mit);
                     it->setsubcnt(subcnt);
+                    it->setComPerson(compersoncnt);
                     getcomment(it, comcnt);
                     ans.push_back(it);
                 }
@@ -466,9 +486,7 @@ vector<Item*> User::getitems(int starti, int endi){
     }
 
     return ans;
-
 }
-
 
 bool User::subscribe(int index){
 
@@ -488,11 +506,14 @@ bool User::subscribe(int index){
     }
 
     TSocket->flush();
-    TSocket->waitForReadyRead();
-
 
     // get respond
     char rbuf[sizeof(RespondHeader)+4];
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof (rbuf))
+        TSocket->waitForReadyRead();
+
     if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
         cerr<< "get respond failed" <<endl;
         return false;
@@ -512,6 +533,51 @@ bool User::subscribe(int index){
 
 }
 
+
+bool User::desubscribe(int index){
+
+
+    // send request
+    RequestHeader header(DESUBSCRIBE, userID, token, index, true);
+
+    ssize_t ret;
+    char hbuf[sizeof(RequestHeader)+4];
+
+    memset(hbuf, 0, sizeof(hbuf));
+    memcpy(hbuf, &header, sizeof(RequestHeader));
+
+    if((ret = TSocket->write(hbuf, sizeof(hbuf))) != sizeof(hbuf)){
+        cerr<< "send request failed" <<endl;
+        return false;
+    }
+
+    TSocket->flush();
+
+    // get respond
+    char rbuf[sizeof(RespondHeader)+4];
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof (rbuf))
+        TSocket->waitForReadyRead();
+
+    if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
+        cerr<< "get respond failed" <<endl;
+        return false;
+    }
+
+    RespondHeader* res = reinterpret_cast<RespondHeader*>(rbuf);
+
+    State st = res->state;
+
+    if(st != SUCCESS){
+        cerr<< "identification failed" <<endl;
+        return false;
+    }
+    else{
+        return true;
+    }
+
+}
 
 bool User::comment(int index, const char *tbuf){
 
@@ -536,11 +602,14 @@ bool User::comment(int index, const char *tbuf){
     }
 
     TSocket->flush();
-    TSocket->waitForReadyRead();
-
 
     // get respond
     char rbuf[sizeof(RespondHeader)+4];
+    memset(rbuf, 0, sizeof(rbuf));
+
+    while((size_t)TSocket->bytesAvailable()<sizeof (rbuf))
+        TSocket->waitForReadyRead();
+
     if((ret = TSocket->read(rbuf, sizeof(rbuf))) != sizeof(rbuf)){
         cerr<< "get respond failed" <<endl;
         return false;
@@ -582,5 +651,67 @@ bool User::comment(int index, const char *tbuf){
 
 }
 
+// 排序
+bool orderByTime(const Item* t1,const Item* t2) {
+    int year1=t1->timestamp.year;
+    int mon1=t1->timestamp.tm_mon;
+    int day1=t1->timestamp.tm_mday;
+    int h1=t1->timestamp.tm_hour;
+    int m1=t1->timestamp.tm_min;
+    int s1=t1->timestamp.tm_sec;
+    int year2=t2->timestamp.year;
+    int mon2=t2->timestamp.tm_mon;
+    int day2=t2->timestamp.tm_mday;
+    int h2=t2->timestamp.tm_hour;
+    int m2=t2->timestamp.tm_min;
+    int s2=t2->timestamp.tm_sec;
+    if(year1>year2) {
+        return true;
+    }else if(year1<year2) {
+        return false;
+    }else {
+        if(mon1>mon2) {
+            return true;
+        }else if(mon1<mon2) {
+            return false;
+        }else {
+            if(day1>day2) {
+                return true;
+            }else if(day1<day2) {
+                return false;
+            }else {
+                if(h1>h2) {
+                    return true;
+                }else if(h1<h2) {
+                    return false;
+                }else {
+                    if(m1>m2) {
+                        return true;
+                    }else if(m1<m2) {
+                        return false;
+                    }else {
+                        if(s1>s2) {
+                            return true;
+                        }else {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+bool orderByCmtcnt(const Item* t1,const Item* t2) {
+    int c1=t1->getcomcnt();
+    int c2=t2->getcomcnt();
+    if(c1>c2) return true;
+    else return false;
+}
+bool orderBySubcnt(const Item* t1,const Item* t2) {
+    int s1=t1->getsubcnt();
+    int s2=t2->getsubcnt();
+    if(s1>s2) return true;
+    else return false;
+}
 };
 

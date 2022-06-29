@@ -21,7 +21,7 @@ using namespace THS;
 
 // ip addr & port
 #define HOST "127.0.0.1"
-#define PORT 9999
+#define PORT 9900
 
 
 // Statement
@@ -31,12 +31,13 @@ void send_msg(State st, int connfd);
 void signup(const ll uid, const char* password, int connfd);
 void login(const ll uid, const char* password, int connfd);
 void logout(const ll uid);
-void reply(State st, ll tk, int connfd);
+void reply(State st, ll tk, int connfd, int index = 0);
 
-void additemtext(const char* textbuf, int uid);
-void additemmulti(const char* textbuf, const char* multibuf, int uid);
-void getlist(ll uid, int seqlen, int connfd);
-void sendlist(vector<const Item*> il, int connfd);
+void additemtext(const char* textbuf, int uid, int index);
+void additemmulti(const char* textbuf, const char* multibuf, int uid, int index);
+void getitem(ll uid, int index, int connfd);
+void sendlist(vector<const Item*>& il, int connfd);
+void getcomment(ll uid, int index, int connfd);
 
 
 void printlist();
@@ -73,9 +74,18 @@ inline Datetime get_time(){
 }
 
 
+void term_handler(int sig){
+	UT.saveuser();
+	cout<<"bye bye"<<endl;
+	exit(0);
+}
+
+
 //多线程 并发服务器
 int main(int argc, char const *argv[])
 {
+	signal(SIGINT, term_handler);
+
     int ret;
     int sockfd;  //套接字描述符
     int connfd;
@@ -102,6 +112,10 @@ int main(int argc, char const *argv[])
     }
     
     listen(sockfd, 255);  //建立监听队列,并监听状态
+
+	int nodelay = 1;
+	int sret = setsockopt(sockfd, IPPROTO_TCP, 1, (char*)&nodelay, sizeof(nodelay));		
+
 
     while(1){
 
@@ -180,6 +194,7 @@ void *client_thread(void *arg)
 				else{
 					reply(SUCCESS, token, connfd);
 					vector<const Item*> il = IL.getitems(h->starti, h->endi);
+					cout<<"user "<<uid << " attempt to get "<<il.size()<<" items "<<endl;
 					sendlist(il, connfd);
 				}
 
@@ -197,9 +212,66 @@ void *client_thread(void *arg)
 					reply(ILLEGAL_USER, token, connfd);
 				}
 				else{
+					int index = IL.grabindex();
+					reply(SUCCESS, token, connfd, index);
+					getitem(uid, index, connfd);
+				}
+
+				break;
+
+			}
+
+			case SUBSCRIBE: {
+
+				uid = h->userID;
+				token = h->token;
+
+				if(!verify(uid, token)){
+					cerr<< "illegal user" <<endl;
+					reply(ILLEGAL_USER, token, connfd);
+				}
+				else{
 					reply(SUCCESS, token, connfd);
-					int seqlen = h->seqlen;
-					getlist(uid, seqlen, connfd);
+					int index = h->index;
+					IL.subscribe(uid, index);
+				}
+
+				break;
+
+			}
+
+			case DESUBSCRIBE: {
+
+				uid = h->userID;
+				token = h->token;
+
+				if(!verify(uid, token)){
+					cerr<< "illegal user" <<endl;
+					reply(ILLEGAL_USER, token, connfd);
+				}
+				else{
+					reply(SUCCESS, token, connfd);
+					int index = h->index;
+					IL.desubscribe(uid, index);
+				}
+
+				break;
+
+			}
+
+			case COMMENT: {
+
+				uid = h->userID;
+				token = h->token;
+
+				if(!verify(uid, token)){
+					cerr<< "illegal user" <<endl;
+					reply(ILLEGAL_USER, token, connfd);
+				}
+				else{
+					reply(SUCCESS, token, connfd);
+					int index = h->index;
+					getcomment(uid, index, connfd);
 				}
 
 				break;
@@ -244,9 +316,12 @@ void detach(int connfd){
 }
 
 
-void reply(State st, ll tk, int connfd){
+void reply(State st, ll tk, int connfd, int index){
 
 	RespondHeader h(REPLY, st, tk);
+	if(index != 0){
+		h.setindex(index);
+	}
 
 	ssize_t ret;
 	char hbuf[sizeof(RespondHeader)+4]; 
@@ -254,7 +329,7 @@ void reply(State st, ll tk, int connfd){
 	memset(hbuf, 0, sizeof(hbuf));
 	memcpy(hbuf, &h, sizeof(RespondHeader));
 
-	if((ret = send(connfd, hbuf, sizeof(hbuf), 0)) != sizeof(hbuf)){
+	if((ret = write(connfd, hbuf, sizeof(hbuf))) != sizeof(hbuf)){
 		cerr<<"send msg failed"<<endl;
 	}
 
@@ -297,7 +372,7 @@ void logout(const ll uid){
 }
 
 
-void additemtext(const char* textbuf, int uid){
+void additemtext(const char* textbuf, int uid, int index){
 
 	size_t tlen = strlen(textbuf);
 	if(tlen >= MAXLEN){
@@ -309,13 +384,13 @@ void additemtext(const char* textbuf, int uid){
 	TextItem* tit = new TextItem(0, uid, timestamp, textbuf);
 
 	Item* it = reinterpret_cast<Item*>(tit);
-	IL.append(it);
+	IL.append(it, index);
 
 }
 
 
 
-void additemmulti(const char* textbuf, const char* multibuf, int uid){
+void additemmulti(const char* textbuf, const char* multibuf, int uid, int index){
 
 	size_t tlen = strlen(textbuf);
 	if(tlen >= MAXLEN){
@@ -323,97 +398,94 @@ void additemmulti(const char* textbuf, const char* multibuf, int uid){
 		return;
 	}
 
-	size_t msize = sizeof(multibuf);
-	if(msize >= MAXSIZE){
-		cerr<< "file too large" <<endl;
-		return;
-	}
 
 	Datetime timestamp = get_time();
 	MultiItem* mit = new MultiItem(0, uid, timestamp, textbuf, multibuf);
 
 	Item* it = reinterpret_cast<Item*>(mit);
-	IL.append(it);
+	IL.append(it, index);
 
 }
 
 
 
-void getlist(ll uid, int seqlen, int connfd){
+void getitem(ll uid, int index, int connfd){
 
 	ssize_t dret;
 	char dbuf[sizeof(DataHeader)+4]; 
 
-	for(int curr = 0; curr < seqlen; curr++){
+	if((dret = read(connfd, dbuf, sizeof(dbuf))) != sizeof(dbuf)){
+		cerr<< "header size error" <<endl;
+		return;
+	}
 
-		if((dret = read(connfd, dbuf, sizeof(dbuf))) != sizeof(dbuf)){
-			cerr<< "header size error" <<endl;
+	DataHeader* dh = reinterpret_cast<DataHeader*>(dbuf); 
+	Itype itype = dh->itype;
+
+	if(itype == TEXTITEM){
+
+		size_t tlen = dh->textlen;
+		char textbuf[tlen+4];
+
+		ssize_t pret;
+		memset(textbuf, 0, sizeof(textbuf));
+		
+		if((pret = read(connfd, textbuf, tlen)) != tlen){
+			cerr<< "textitem length error" <<endl;
 			return;
-		}
-
-		DataHeader* dh = reinterpret_cast<DataHeader*>(dbuf); 
-		Itype itype = dh->itype;
-
-		if(itype == TEXTITEM){
-
-			int tlen = dh->textlen;
-			char textbuf[tlen+4];
-
-			ssize_t pret;
-			memset(textbuf, 0, sizeof(textbuf));
-			
-			if((pret = read(connfd, textbuf, tlen)) != tlen){
-				cerr<< "textitem length error" <<endl;
-				return;
-			}
-			else{
-				cout<<"user "<<uid << " send text: "<<"\""<< textbuf <<"\""<<endl;
-				additemtext(textbuf, uid);
-			}
-
-		}
-
-		else if(itype == MULTIITEM){
-
-			int tlen = dh->textlen;
-			int msize = dh->multisize;
-
-			char textbuf[tlen+4];
-			char multibuf[msize+4];
-
-			ssize_t pret;
-			memset(textbuf, 0, sizeof(textbuf));
-			memset(multibuf, 0, sizeof(multibuf));
-
-			if((pret = read(connfd, textbuf, tlen)) != tlen){
-				cerr<< "textitem length error" <<endl;
-				return;
-			}
-			else{
-
-				cout<<"user "<<uid << " send text: "<<"\""<< textbuf <<"\""<<endl;
-
-				if((pret = read(connfd, multibuf, msize)) == msize){
-					cerr<< "multiitem length error" <<endl;
-					return;
-				}
-				else{
-					additemmulti(textbuf, multibuf, uid);
-				}
-			}
-
 		}
 		else{
-			cerr<<"Illegal item type"<<endl;
+			cout<<"user "<<uid << " send text: "<<"\""<< textbuf <<"\""<<endl;
+			additemtext(textbuf, uid, index);
+		}
+
+	}
+
+	else if(itype == MULTIITEM){
+
+		size_t tlen = dh->textlen;
+		size_t msize = dh->multisize;
+
+		char textbuf[tlen+4];
+		char* multibuf = new char[msize+4];
+
+		ssize_t pret;
+		memset(textbuf, 0, sizeof(textbuf));
+		memset(multibuf, 0, sizeof(multibuf));
+
+		if((pret = read(connfd, textbuf, tlen)) != tlen){
+			cerr<< "textitem length error" <<endl;
 			return;
 		}
-		
+		else{
+
+			cout<<"user "<<uid << " send text: "<<"\""<< textbuf <<"\""<<endl;
+			
+			pret = 0;
+			while((pret += read(connfd, multibuf+pret, msize-pret)) != msize);
+			additemmulti(textbuf, multibuf, uid, index);
+
+			delete multibuf;
+			// if((pret = read(connfd, multibuf, msize)) != msize){
+			// 	cerr<< "multiitem length error" <<endl;
+			// 	return;
+			// }
+			// else{
+			// 	additemmulti(textbuf, multibuf, uid);
+			// }
+		}
+
 	}
+	else{
+		cerr<<"Illegal item type"<<endl;
+		return;
+	}
+		
 
 }
 
 
-void sendlist(vector<const Item*> il, int connfd){
+void sendlist(vector<const Item*>& il, int connfd){
 
 	int seql = il.size();
 
@@ -423,7 +495,7 @@ void sendlist(vector<const Item*> il, int connfd){
 	char hbuf[sizeof(RespondHeader)+4]; 
 
 	memset(hbuf, 0, sizeof(hbuf));
-	memcpy(hbuf, &h, sizeof(RequestHeader));
+	memcpy(hbuf, &h, sizeof(RespondHeader));
 
 	if((ret = write(connfd, hbuf, sizeof(hbuf))) != sizeof(hbuf)){
 		cerr<<"send header failed"<<endl;
@@ -446,10 +518,12 @@ void sendlist(vector<const Item*> il, int connfd){
 			int index = tit->getindex();
 			ll uid = tit->getuid();
 			Datetime timestamp = tit->gettimestamp();
+			int subcnt = tit->getsubcnt();
 			int comcnt = tit->getcomcnt();
+			int comPersoncnt = tit->getComPerson();
 
 			// send header
-			DataHeader dh(TEXTITEM, tlen, index, uid, timestamp, comcnt);
+			DataHeader dh(TEXTITEM, tlen, index, uid, timestamp, subcnt, comcnt, comPersoncnt);
 			memset(dbuf, 0, sizeof(dbuf));
 			memcpy(dbuf, &dh, sizeof(DataHeader));
 			
@@ -471,16 +545,17 @@ void sendlist(vector<const Item*> il, int connfd){
 			for(auto com : vs){
 
 				memset(cbuf, 0, sizeof(cbuf));
+				memcpy(cbuf, &com, sizeof(Comment));
 
-				if((dret = write(connfd, &com, sizeof(Comment))) != sizeof(Comment)){
+				if((dret = write(connfd, cbuf, sizeof(cbuf))) != sizeof(cbuf)){
 					cerr<<"send comment failed"<<endl;
 					return;
 				}
 
 			}
 
-
 		}
+
 		else if(itype == MULTIITEM){
 
 			const MultiItem* mit = reinterpret_cast<const MultiItem*>(it);
@@ -490,11 +565,13 @@ void sendlist(vector<const Item*> il, int connfd){
 			int index = mit->getindex();
 			ll uid = mit->getuid();
 			Datetime timestamp = mit->gettimestamp();
+			int subcnt = mit->getsubcnt();
 			int comcnt = mit->getcomcnt();
+			int comPersoncnt = mit->getComPerson();
 
 
 			// send header
-			DataHeader dh(MULTIITEM, tlen, msize, index, uid, timestamp, comcnt);
+			DataHeader dh(MULTIITEM, tlen, msize, index, uid, timestamp, subcnt, comcnt, comPersoncnt);
 			memset(dbuf, 0, sizeof(dbuf));
 			memcpy(dbuf, &dh, sizeof(DataHeader));
 
@@ -519,12 +596,13 @@ void sendlist(vector<const Item*> il, int connfd){
 
 			// send comments
 			vector<Comment>vs = mit->getcomment();
+			char cbuf[sizeof(Comment)+4];
 			for(auto com : vs){
 
-				char cbuf[sizeof(Comment)+4];
 				memset(cbuf, 0, sizeof(cbuf));
+				memcpy(cbuf, &com, sizeof(Comment));
 
-				if((dret = write(connfd, &com, sizeof(Comment))) != sizeof(Comment)){
+				if((dret = write(connfd, cbuf, sizeof(cbuf))) != sizeof(cbuf)){
 					cerr<<"send comment failed"<<endl;
 					return;
 				}
@@ -553,4 +631,38 @@ void printlist(){
 			cout<<"user "<<uid << " send text: "<<"\""<< text <<"\""<<endl;
 		}
 	}
+}
+
+
+void getcomment(ll uid, int index, int connfd){
+
+	ssize_t dret;
+	char dbuf[sizeof(DataHeader)+4]; 
+
+
+	if((dret = read(connfd, dbuf, sizeof(dbuf))) != sizeof(dbuf)){
+		cerr<< "header size error" <<endl;
+		return;
+	}
+
+	DataHeader* dh = reinterpret_cast<DataHeader*>(dbuf); 
+
+	int tlen = dh->textlen;
+	char textbuf[tlen+4];
+
+	ssize_t pret;
+	memset(textbuf, 0, sizeof(textbuf));
+	
+	if((pret = read(connfd, textbuf, tlen)) != tlen){
+		cerr<< "comment length error" <<endl;
+		return;
+	}
+	else{
+		cout<<"user "<<uid << " comment: "<<"\""<< textbuf <<"\""<<endl;
+		Datetime timestamp = get_time();
+		Comment c(0, uid, timestamp, textbuf);
+		IL.comment(index, c);
+	}
+
+	
 }

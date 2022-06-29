@@ -6,9 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>900</width>
+    <width>955</width>
     <height>600</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Minimum" vsizetype="Maximum">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="font">
+   <font>
+    <family>Arial</family>
+    <pointsize>9</pointsize>
+   </font>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
@@ -16,11 +28,11 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout_4">
     <item>
-     <layout class="QVBoxLayout" name="mainLayout" stretch="1,9,3">
+     <layout class="QVBoxLayout" name="mainLayout" stretch="0,9,3">
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="10,1,50,1,10,1,10">
+       <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,0,1,50,1,10,1,10">
         <item>
-         <widget class="QPushButton" name="pushButton_4">
+         <widget class="QPushButton" name="refreshBtn">
           <property name="styleSheet">
            <string notr="true">background-color: rgb(255, 85, 0);
 color: white;
@@ -32,7 +44,36 @@ height: 25px;
 </string>
           </property>
           <property name="text">
-           <string>PushButton</string>
+           <string>Refresh</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="background">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>104</width>
+            <height>29</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">background-color: rgb(255, 85, 0);
+color: white;
+font: 18px &quot;Comic Sans MS&quot;;
+border: 2px solid rgb(255, 170, 0);
+border-radius: 10px;
+width: 100px;
+height: 25px;
+</string>
+          </property>
+          <property name="text">
+           <string>Background</string>
           </property>
          </widget>
         </item>
@@ -50,7 +91,7 @@ height: 25px;
          </spacer>
         </item>
         <item>
-         <widget class="QLineEdit" name="lineEdit">
+         <widget class="QLineEdit" name="searchInfo">
           <property name="styleSheet">
            <string notr="true">height: 30px;
 background-color: rgb(255, 255, 255);
@@ -73,7 +114,7 @@ border-radius: 10px;</string>
          </spacer>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton_3">
+         <widget class="QPushButton" name="searchBtn">
           <property name="styleSheet">
            <string notr="true">background-color: rgb(255, 85, 0);
 color: white;
@@ -85,7 +126,7 @@ height: 25px;
 </string>
           </property>
           <property name="text">
-           <string>PushButton</string>
+           <string>Search</string>
           </property>
          </widget>
         </item>
@@ -103,7 +144,7 @@ height: 25px;
          </spacer>
         </item>
         <item>
-         <widget class="QPushButton" name="pushButton_2">
+         <widget class="QPushButton" name="subsBtn">
           <property name="styleSheet">
            <string notr="true">background-color: rgb(255, 85, 0);
 color: white;
@@ -115,72 +156,26 @@ height: 25px;
 </string>
           </property>
           <property name="text">
-           <string>PushButton</string>
+           <string>Subscirption</string>
           </property>
          </widget>
         </item>
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout" stretch="100,2,30">
+       <layout class="QHBoxLayout" name="horizontalLayout" stretch="6">
         <item>
-         <widget class="QListWidget" name="listWidget">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
+         <widget class="QListWidget" name="oldMsg">
           <property name="styleSheet">
            <string notr="true">background-color: rgb(255, 255, 255);
 border: 2px solid rgb(67, 67, 67);
 border-radius: 10px;</string>
           </property>
-         </widget>
-        </item>
-        <item>
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+          <property name="lineWidth">
+           <number>0</number>
           </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>40</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item>
-         <widget class="QListWidget" name="listWidget_2">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="minimumSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="baseSize">
-           <size>
-            <width>0</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">background-color: rgb(255, 255, 255);
-border: 2px solid rgb(67, 67, 67);
-border-radius: 10px;</string>
+          <property name="autoScroll">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -191,20 +186,40 @@ border-radius: 10px;</string>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QToolButton" name="toolButton">
+           <widget class="QComboBox" name="orderFunc">
+            <property name="font">
+             <font>
+              <family>Comic Sans MS</family>
+              <pointsize>-1</pointsize>
+              <weight>50</weight>
+              <italic>false</italic>
+              <bold>false</bold>
+             </font>
+            </property>
             <property name="styleSheet">
-             <string notr="true">background-color: rgb(255, 255, 255);
-font: 25px &quot;Comic Sans MS&quot;;
-border: 2px solid rgb(147, 147, 147);
+             <string notr="true">background-color: rgb(50,50,50);
+color: white;
+font: 18px &quot;Comic Sans MS&quot;;
+border: 2px solid rgb(150,150,150);
 border-radius: 10px;
-width: 50px;
-height: 20px;
-line-height: 25px;
-text-align: center;</string>
+width: 100px;
+height: 25px;</string>
             </property>
-            <property name="text">
-             <string>...</string>
-            </property>
+            <item>
+             <property name="text">
+              <string>最新</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>最多评论</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>最多关注</string>
+             </property>
+            </item>
            </widget>
           </item>
           <item>
@@ -221,7 +236,24 @@ text-align: center;</string>
            </spacer>
           </item>
           <item>
-           <widget class="QPushButton" name="pushButton">
+           <widget class="QPushButton" name="picBtn">
+            <property name="styleSheet">
+             <string notr="true">background-color: rgb(14, 118, 255);
+color: white;
+font: 18px &quot;Comic Sans MS&quot;;
+border: 2px solid rgb(0, 200, 255);
+border-radius: 10px;
+width: 100px;
+height: 25px;
+</string>
+            </property>
+            <property name="text">
+             <string>selectPic</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="sendBtn">
             <property name="styleSheet">
              <string notr="true">background-color: rgb(14, 118, 255);
 color: white;
@@ -243,7 +275,7 @@ height: 25px;
          <widget class="QWidget" name="widget" native="true"/>
         </item>
         <item>
-         <widget class="QTextEdit" name="textEdit">
+         <widget class="QTextEdit" name="sendMsg">
           <property name="styleSheet">
            <string notr="true">font: 10pt &quot;华文细黑&quot;;
 background-color: rgba(255, 255, 255, 0.8);
@@ -263,7 +295,7 @@ border-radius: 18px;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>900</width>
+     <width>955</width>
      <height>26</height>
     </rect>
    </property>

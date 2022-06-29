@@ -11,16 +11,21 @@ using namespace std;
 //Maxlen
 #define MAXPLEN 24
 #define MAXMLEN 48
-#define MAXLEN 256
-#define MAXSIZE 2048
+#define MAXLEN 1024
+#define MAXSIZE 1<<20
 #define MAXSLEN 128
 #define MAXCOM 128
+#define MAXUSER 64
+#define NAMEBYTE 10
 
 //Thread
 #define INIT pthread_mutex_init
 #define P pthread_mutex_lock
 #define V pthread_mutex_unlock
 
+//Save
+#define USER_PATH "./save/user.txt"
+#define ITEM_PATH "./save/item.txt"
 
 
 namespace THS { //TreeHoleServer
@@ -29,11 +34,12 @@ namespace THS { //TreeHoleServer
 enum Itype{ DEFAULTITEM = 0, TEXTITEM, MULTIITEM };
 
 //Header type
-enum Htype{ SIGNUP = 0, LOGIN, GET, UPLOAD, REPLY, SEND };
+enum Htype{ SIGNUP = 0, LOGIN, GET, UPLOAD, REPLY, SEND, SUBSCRIBE, COMMENT, DESUBSCRIBE };
 
 //Error type
 enum State{ SUCCESS = 0, USER_EXIST, USER_NOT_EXIST, PASSWORD_FAIL, ILLEGAL_USER, UPLOAD_FAIL };
 
+constexpr char names[10][10] = {"Alice", "Bob", "Carol", "Dave", "Eve", "Francis", "Grace", "Hans", "Isabella", "Jason"};
 
 struct Datetime {
 
@@ -66,6 +72,9 @@ struct RequestHeader {
     // request
     int starti;      // start index of items requested
     int endi;        // end index of items requested
+
+    //subscribe & comment
+    int index;       // target item index
 
 
     // signup & login
@@ -103,6 +112,9 @@ struct RespondHeader {
     // content
     int seqlen;   // sequence length
 
+    // index
+    int index;
+
     RespondHeader(){}
     
     // reply
@@ -113,12 +125,19 @@ struct RespondHeader {
     RespondHeader(Htype ty, int sl):
         htype(ty),seqlen(sl){}
 
+    
+    void setindex(int i){
+        index = i;
+    }
+
 };
+
 
 
 
 struct DataHeader {
 
+    // base info
     Itype itype;
     size_t textlen;
     size_t multisize;
@@ -127,31 +146,35 @@ struct DataHeader {
     ll uid;
     Datetime timestamp;
     
-    int comcnt;  // comment count
+    // count
+    int subcnt; 
+    int comcnt;
+    int comPersonCnt;
 
     // text data
     DataHeader(Itype ty, int tl):
         itype(ty),textlen(tl){}
 
-    DataHeader(Itype ty, int tl, int i, ll u, Datetime dt, int cc):
-        itype(ty),textlen(tl),index(i),uid(u),timestamp(dt),comcnt(cc){}
+    DataHeader(Itype ty, int tl, int i, ll u, Datetime dt, int sc, int cc, int cp):
+        itype(ty),textlen(tl),index(i),uid(u),timestamp(dt),subcnt(sc),comcnt(cc),comPersonCnt(cp){}
 
     // multi data
     DataHeader(Itype ty, int tl, int ms):
         itype(ty),textlen(tl),multisize(ms){}
 
-    DataHeader(Itype ty, int tl, int ms, int i, ll u, Datetime dt, int cc):
-        itype(ty),textlen(tl),multisize(ms),index(i),uid(u),timestamp(dt),comcnt(cc){}
+    DataHeader(Itype ty, int tl, int ms, int i, ll u, Datetime dt, int sc, int cc, int cp):
+        itype(ty),textlen(tl),multisize(ms),index(i),uid(u),timestamp(dt),subcnt(sc),comcnt(cc),comPersonCnt(cp){}
 
 };
 
 
 struct Comment {
 
-    int index;  
+    int index;
 
     // user info
     ll userID;
+    char name[NAMEBYTE];
 
     // time
     Datetime timestamp;
@@ -159,8 +182,8 @@ struct Comment {
     // length
     size_t textlen;
 
-    // content 
-    char text[MAXLEN];   
+    // content
+    char text[MAXLEN];
 
 
     Comment(){}
@@ -168,7 +191,15 @@ struct Comment {
         index(i),userID(u),timestamp(t)
     {
         textlen = strlen(textbuf);
+        memset(name, 0, sizeof(name));
+        memset(text, 0, sizeof(text));
         strncpy(text, textbuf, textlen);
+    }
+    char* getName() {
+        return name;
+    }
+    void setName(char* s) {
+        strncpy(name, s, strlen(s));
     }
 
 };
@@ -188,7 +219,9 @@ class Item {
 
     // comments
     int subcnt;       // subscribe count
+    ll subusers[MAXUSER];     // uid of users who subscribe
     int comcnt;       // comment count
+    int comPersonCnt;  // 评论的人数，用来分配名字
     Comment comments[MAXCOM];     // short comments
 
     // content info
@@ -204,6 +237,7 @@ protected:
         comcnt = 0;
         textlen = 0;
         multisize = 0;
+        comPersonCnt = 0;
     }
 
 public:
@@ -244,16 +278,74 @@ public:
         return multisize;
     }
 
+    void addsubscribe(ll uid) {
+        for(int i=0; i<subcnt; i++){
+            if(subusers[i] == uid)return;
+        }
+        subusers[subcnt++] = uid;
+    }
+
+    void desubscribe(ll uid) {
+        for(int i=0; i<subcnt; i++){
+            if(subusers[i] == uid){
+                for(int j=i; j<subcnt-1; j++){
+                    subusers[j] = subusers[j+1];
+                }
+                subcnt--;
+                break;
+            }
+        }
+    }
+
     int getsubcnt() const {
         return subcnt;
+    }
+
+    void setsubcnt(int sc) {
+        subcnt = sc;
     }
 
     int getcomcnt() const {
         return comcnt;
     }
 
-    void addcomment(const Comment* c) {
-        comments[comcnt++] = *c;
+    int getComPerson() const {
+        return comPersonCnt;
+    }
+
+    void setComPerson(int cp){
+        comPersonCnt = cp;
+    }
+
+    void addcomment(Comment c) {
+
+        c.index = comcnt + 1;
+
+        ll uid = c.userID;
+
+        for(int i=0; i<comcnt; i++){
+            if(comments[i].userID == uid){
+                strncpy(c.name, comments[i].name, strlen(comments[i].name));
+                comments[comcnt++] = c;
+                return;
+            }
+        }
+
+        const char* name;
+
+        if(uid == userID){
+            name = "DZ";
+        }
+        else if(comPersonCnt >= 10){
+            name = "You Win";
+        }
+        else{
+            name = names[comPersonCnt++];
+        }
+
+        strncpy(c.name, name, strlen(name));
+        comments[comcnt++] = c;
+
     }
 
     vector<Comment> getcomment() const {
@@ -264,6 +356,10 @@ public:
         }
         return res;
 
+    }
+
+    int getComPerson() {
+        return comPersonCnt;
     }
 
 
@@ -308,7 +404,7 @@ public:
         Item(MULTIITEM, i, u, t)
     {
         settextlen(strlen(textbuf));
-        setmultisize(sizeof(multibuf));
+        setmultisize(MAXSIZE);
 
         memset(text, 0, MAXLEN);
         memset(multi, 0, MAXSIZE);
@@ -362,7 +458,97 @@ public:
 
     }
 
-    void append(Item* it){
+
+    void subscribe(ll uid, int index){
+
+        P(&stop);   
+        P(&rmutex);  // writer first
+        P(&rclock); 
+        readcount++;
+        if(readcount == 1)
+            P(&wmutex);
+        V(&rclock);
+        V(&rmutex);
+        V(&stop);
+
+
+        auto iter = ilist.find(index);
+        if(iter == ilist.end()){
+            cerr<< "item not found" <<endl;
+        }
+        else{
+            iter->second->addsubscribe(uid);
+        }
+
+        P(&rclock);
+        readcount--;
+        if(readcount == 0)
+            V(&wmutex);
+        V(&rclock);
+
+    }
+
+    void desubscribe(ll uid, int index){
+
+        P(&stop);   
+        P(&rmutex);  // writer first
+        P(&rclock); 
+        readcount++;
+        if(readcount == 1)
+            P(&wmutex);
+        V(&rclock);
+        V(&rmutex);
+        V(&stop);
+
+
+        auto iter = ilist.find(index);
+        if(iter == ilist.end()){
+            cerr<< "item not found" <<endl;
+        }
+        else{
+            iter->second->desubscribe(uid);
+        }
+
+        P(&rclock);
+        readcount--;
+        if(readcount == 0)
+            V(&wmutex);
+        V(&rclock);
+
+    }
+
+    void comment(int index, const Comment& c){
+
+        P(&stop);   
+        P(&rmutex);  // writer first
+        P(&rclock); 
+        readcount++;
+        if(readcount == 1)
+            P(&wmutex);
+        V(&rclock);
+        V(&rmutex);
+        V(&stop);
+
+
+        auto iter = ilist.find(index);
+        if(iter == ilist.end()){
+            cerr<< "item not found" <<endl;
+        }
+        else{
+            iter->second->addcomment(c);
+        }
+
+        P(&rclock);
+        readcount--;
+        if(readcount == 0)
+            V(&wmutex);
+        V(&rclock);
+
+    }
+
+    int grabindex() {
+
+        int index = 0;
 
         P(&wclock);
         writecount++;
@@ -372,8 +558,33 @@ public:
 
         P(&wmutex);
 
-        it->setindex(++cnt);
-        ilist[cnt] = it;
+        index = ++cnt;
+
+        V(&wmutex);
+
+        P(&wclock);
+        writecount--;
+        if(writecount == 0)
+            V(&rmutex);
+        V(&wclock);
+
+        return index;
+
+        
+    }
+
+    void append(Item* it, int index){
+
+        P(&wclock);
+        writecount++;
+        if(writecount == 1)
+            P(&rmutex);
+        V(&wclock);
+
+        P(&wmutex);
+
+        it->setindex(index);
+        ilist[index] = it;
 
         V(&wmutex);
 
@@ -401,10 +612,9 @@ public:
         auto iter_l = ilist.lower_bound(starti); 
         auto iter_r = ilist.upper_bound(endi); 
 
-
-        if(iter_l == ilist.end())return {};  // not found
-
         vector<const Item*>ans;
+
+        if(iter_l == ilist.end())ans = {};  // not found
 
         for(auto iter = iter_l; iter != iter_r; ++iter){
 
@@ -462,6 +672,61 @@ public:
         hash.clear();
         tokens.clear();
 
+        //admin account
+        User* admin = new User(100, "0047");
+        hash[100] = admin;
+
+        loaduser();
+
+    }
+
+
+    void saveuser(){
+
+        P(&rmutex);
+        if(readcount==0)
+            P(&wmutex);
+        readcount++;
+        V(&rmutex);
+
+        int outfd = open(USER_PATH, O_RDWR | O_CREAT | O_TRUNC, 0666);
+
+        for(auto ha : hash){
+            User* user = ha.second;
+            char* buf = reinterpret_cast<char*>(user);
+            write(outfd, buf, sizeof(User));
+        }
+
+        close(outfd);
+
+
+        P(&rmutex);
+        readcount--;
+        if(readcount==0)
+            V(&wmutex);
+        V(&rmutex);
+
+    }
+
+
+    void loaduser(){
+
+        int infd = open(USER_PATH, O_RDONLY);
+        if(infd < 0){
+            cerr<<"no save file, load user fail"<<endl;
+            return;
+        }
+
+        ssize_t ret;
+        char buf[sizeof(User)+4];
+        while((ret = read(infd, buf, sizeof(User))) == sizeof(User)){
+            User* user = reinterpret_cast<User*>(buf);
+            User* newuser = new User(*user);
+            hash[newuser->userID] = newuser;
+        }
+
+        close(infd);
+        
     }
 
     bool exist(const ll key){
@@ -599,6 +864,7 @@ public:
         if(!is_exist)return USER_NOT_EXIST;
 
         char buf[MAXPLEN];
+        memset(buf, 0, sizeof(buf));
         get(id, buf);
 
         if(strcmp(buf, password) != 0)return PASSWORD_FAIL;

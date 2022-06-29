@@ -19,12 +19,19 @@
 #include <QDebug>
 #include <QTimer>
 #include <QString>
-#include <QDialog>
-#include "chatmessage/qnchatmessage.h"
+#include <vector>
+#include <QScreen>
+#include <QRect>
+#include <QGuiApplication>
+#include <math.h>
+#include <QGroupBox>
+#include <QLayout>
+#include <QFileDialog>
+#include <set>
 #include "client.h"
+#include "newwindow.h"
 #include "login.h"
 #include "enroll.h"
-using namespace std;
 using namespace THC;
 
 namespace Ui {
@@ -39,16 +46,62 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    void bind(User* u) {user=u;}
 
-    void dealMessage(QNChatMessage *messageW, QListWidgetItem *item, QString text, QString time, QNChatMessage::User_Type type);
-    void dealMessageTime(QString curMsgTime);
+    // 存储Items
+    vector<Item*> myItems;
+    // 排序后的Items
+    vector<Item*> ordered;
+    // 显示的字体
+    QFont textFont=QFont("SimSun",13);
+    QFont infoFont=QFont("SimSun",10);
+    // 获取屏幕尺寸
+    QList<QScreen*> screen_list=QGuiApplication::screens();
+    QRect rect=screen_list.at(0)->geometry();
+    int screenWidth=rect.width();
+    // 显示的每一条条目宽度
+    int itemWidth=screenWidth/2;
 
-    void bind(User* u){user=u;}
+    static const int oneLineHeight=45;
+    static const int picHeight=600;
+
+    // multiItem
+    char picbuf[MAXSIZE];
+    bool haspic=false;
+
+    // 显示文本条目
+    void showTextItem(TextItem* ti,int i);
+    // 显示图片条目
+    void showMultiItem(MultiItem* mi,int i);
+    // 计算每个条目的自适应高度
+    static int itemHeight(int oneLine, int totalLen);
+
+    // 根据tm返回字符串
+    static QString tmToStr(Datetime time);
+
+    // 搜索功能
+    int next[MAXLEN];
+    void getNext(string t);
+    int KMP(string s,string t);
+
+
+
 
 
 private slots:
-    void on_pushButton_clicked();
+    void on_sendBtn_clicked();
 
+    void on_refreshBtn_clicked();
+
+    void on_oldMsg_itemClicked(QListWidgetItem *item);
+
+    void on_picBtn_clicked();
+
+    void on_searchBtn_clicked();
+
+    void on_subsBtn_clicked();
+
+    void on_background_clicked();
 private:
     Ui::MainWindow *ui;
     User* user;

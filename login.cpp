@@ -1,3 +1,11 @@
+/*-------------------------------------------------
+#
+# Project created by QtCreator
+# Author: 杨明
+# Info: Qt树洞
+# Github:https://github.com/ZYM-PKU/Qt-TreeHole
+#
+#-------------------------------------------------*/
 #include "login.h"
 #include <QMessageBox>
 #include "enroll.h"
@@ -10,7 +18,7 @@ LoginForm::LoginForm(QDialog *parent) :
     QDialog(parent)
 {
     QPalette palette;
-    QPixmap loginpixmap("../Qt-Treehole/img/loginbackground.jpg");
+    QPixmap loginpixmap("./img/loginbackground.jpg");
     palette.setBrush(QPalette::Window, QBrush(loginpixmap));
     this->setPalette(palette);
     QFont ft;
