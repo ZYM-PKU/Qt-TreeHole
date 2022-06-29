@@ -5,6 +5,7 @@
 #include <QTextEdit>
 #include <QListWidgetItem>
 #include <set>
+#include <QMessageBox>
 #include "client.h"
 #include "mainwindow.h"
 using namespace THC;
@@ -38,6 +39,8 @@ private slots:
     void on_subcBtn_clicked();
 
     void on_pushButton_clicked();
+    void on_repoBtn_clicked();
+
 private:
     Ui::newWindow *ui;
     User* user;

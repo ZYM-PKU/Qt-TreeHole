@@ -47,13 +47,16 @@ void MainWindow::on_sendBtn_clicked()
 
     string str = msg.toStdString();
     const char* textbuf = str.c_str();
+    long long sendID;
     if(!haspic) {
-        user->sendtext(textbuf);
+        sendID=user->sendtext(textbuf);
     }else {
-        user->sendmulti(textbuf,picbuf);
+        sendID=user->sendmulti(textbuf,picbuf);
         memset(picbuf,0,sizeof(picbuf));
         haspic=false;
     }
+    // 评论自动关注
+    subcIDs.insert(sendID);
 
     _sleep(100);
     ui->refreshBtn->click();
@@ -383,8 +386,8 @@ void MainWindow::on_subsBtn_clicked()
     ui->oldMsg->clear();
     myItems.clear();
     ordered.clear();
-    set<ll>::iterator j=subcIDs.begin();
-    set<ll>::iterator end=subcIDs.end();
+    set<int>::iterator j=subcIDs.begin();
+    set<int>::iterator end=subcIDs.end();
     for(;j!=end;j++) {
         vector<Item*> tmp=user->getitems(*j,(*j)+1);
         myItems.push_back(tmp.at(0));

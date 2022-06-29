@@ -50,4 +50,5 @@ DISTFILES += \
     img/loginbackground.jpg \
     img/Customer Copy.png \
     img/Customer Copy.png \
-    img/Customer Copy.png
+    img/Customer Copy.png \
+    subcData.txt

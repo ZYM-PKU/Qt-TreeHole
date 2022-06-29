@@ -84,7 +84,8 @@ DIST          = img/Customer \
 		img/Customer \
 		Copy.png \
 		img/Customer \
-		Copy.png client.h \
+		Copy.png \
+		subcData.txt client.h \
 		mainwindow.h \
 		newwindow.h \
 		enroll.h \
@@ -327,6 +328,8 @@ debug/moc_mainwindow.cpp: mainwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qtextcursor.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qtextformat.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qpen.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QMessageBox \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmessagebox.h \
 		mainwindow.h \
 		login.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QDialog \
@@ -475,6 +478,9 @@ debug/moc_newwindow.cpp: newwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qstyle.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qtabbar.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qrubberband.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QMessageBox \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmessagebox.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qdialog.h \
 		client.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/QTextCodec \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/qtextcodec.h \
@@ -517,7 +523,6 @@ debug/moc_newwindow.cpp: newwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qfiledialog.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/qdir.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/qfileinfo.h \
-		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qdialog.h \
 		newwindow.h \
 		login.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QDialog \
@@ -1085,6 +1090,8 @@ debug/main.o: main.cpp mainwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qtextcursor.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qtextformat.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qpen.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QMessageBox \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmessagebox.h \
 		login.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QDialog \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QLabel \
@@ -1097,7 +1104,8 @@ debug/main.o: main.cpp mainwindow.h \
 		enroll.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QApplication \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qapplication.h \
-		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qdesktopwidget.h
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qdesktopwidget.h \
+		subcIDs.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o debug\main.o main.cpp
 
 debug/mainwindow.o: mainwindow.cpp mainwindow.h \
@@ -1276,6 +1284,8 @@ debug/mainwindow.o: mainwindow.cpp mainwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qtextcursor.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qtextformat.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtGui/qpen.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QMessageBox \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmessagebox.h \
 		login.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QDialog \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QLabel \
@@ -1287,6 +1297,26 @@ debug/mainwindow.o: mainwindow.cpp mainwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qabstractbutton.h \
 		enroll.h \
 		ui_mainwindow.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/QVariant \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QAction \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qaction.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qactiongroup.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QApplication \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qapplication.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qdesktopwidget.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QComboBox \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qcombobox.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QHBoxLayout \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QListWidget \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QMenu \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmenu.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QMenuBar \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmenubar.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QSpacerItem \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QStatusBar \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qstatusbar.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QVBoxLayout \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QWidget \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/QDateTime \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/qdatetime.h \
 		subcIDs.h
@@ -1425,6 +1455,9 @@ debug/newwindow.o: newwindow.cpp newwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qstyle.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qtabbar.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qrubberband.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QMessageBox \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmessagebox.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qdialog.h \
 		client.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/QTextCodec \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/qtextcodec.h \
@@ -1467,7 +1500,6 @@ debug/newwindow.o: newwindow.cpp newwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qfiledialog.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/qdir.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/qfileinfo.h \
-		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qdialog.h \
 		login.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QDialog \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QLabel \
@@ -1479,6 +1511,22 @@ debug/newwindow.o: newwindow.cpp newwindow.h \
 		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qabstractbutton.h \
 		enroll.h \
 		ui_newwindow.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtCore/QVariant \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QApplication \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qapplication.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qdesktopwidget.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QHBoxLayout \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QListWidget \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QMenuBar \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmenubar.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qmenu.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qaction.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qactiongroup.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QSpacerItem \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QStatusBar \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/qstatusbar.h \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QVBoxLayout \
+		../../../Qt/Qt5.14.2/5.14.2/mingw73_64/include/QtWidgets/QWidget \
 		subcIDs.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o debug\newwindow.o newwindow.cpp
 

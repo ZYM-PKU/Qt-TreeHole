@@ -11,12 +11,22 @@
 #include "mainwindow.h"
 #include <QApplication>
 #include <QDialog>
+#include <iostream>
 #include "login.h"
 #include "enroll.h"
+#include "subcIDs.h"
 
 
 int main(int argc, char *argv[])
 {
+    ifstream fin;
+    fin.open("subcData.txt",ios::in);
+    if(!fin.is_open()) cerr<<"open file failed"<<endl;
+    int tmp;
+    // 读入之前的关注id
+    while(fin>>tmp) {
+        subcIDs.insert(tmp);
+    }
     QApplication a(argc, argv);
 
     LoginForm Login;
@@ -32,9 +42,15 @@ int main(int argc, char *argv[])
     if (Login.exec() == QDialog::Accepted)//调用login.exec()，阻塞主控制流，直到完成返回，继续执行主控制流
     {
        w.show();
-       return a.exec();
+       a.exec();  // 运行
+       // 写入文件
+       ofstream fout;
+       fout.open("subcData.txt");
+       for(auto i=subcIDs.begin();i!=subcIDs.end();i++) {
+           fout<<*i<<' ';
+       }
+       return 0;
     }
     else return 0;
 
-    return a.exec();
 }

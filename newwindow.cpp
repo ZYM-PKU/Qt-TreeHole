@@ -259,3 +259,10 @@ void newWindow::on_pushButton_clicked()
      }
 
 }
+
+void newWindow::on_repoBtn_clicked()
+{
+    QMessageBox::information(this, "提示", "本树洞继承了‘思想自由，兼容并包’的优良传统"
+                                         "暂不允许举报🐶🐶🐶");
+
+}

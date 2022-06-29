@@ -1,2 +1,2 @@
 #include "subcIDs.h"
-set<long long> subcIDs;
+set<int> subcIDs;
